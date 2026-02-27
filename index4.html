@@ -1,0 +1,2220 @@
+<!doctype html>
+<html lang="th" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LYKN - ระบบจัดการเอกสาร</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://apis.google.com/js/api.js"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
+  <style>
+        * { font-family: 'Sarabun', sans-serif; }
+        .sidebar-item:hover { background: rgba(255,255,255,0.1); }
+        .sidebar-item.active { background: rgba(255,255,255,0.2); border-left: 4px solid white; }
+        .doc-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.15); }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .btn-primary { transition: all 0.2s ease; }
+        .btn-primary:hover { transform: scale(1.02); }
+        input:focus, select:focus, textarea:focus { outline: none; box-shadow: 0 0 0 3px rgba(102, 45, 145, 0.2); }
+        .modal-overlay { background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
+        .status-pending { background: #fef3c7; color: #92400e; }
+        .status-paid { background: #d1fae5; color: #065f46; }
+        .status-cancelled { background: #fee2e2; color: #991b1b; }
+        .status-active { background: #d1fae5; color: #065f46; }
+        .status-suspended { background: #fee2e2; color: #991b1b; }
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+        }
+        .print-only { display: none; }
+        .tab-active { border-bottom: 3px solid #662D91; }
+        .stock-level-low { color: #dc2626; font-weight: bold; }
+        .stock-level-ok { color: #16a34a; }
+    </style>
+  <style>body { box-sizing: border-box; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+ </head>
+ <body class="h-full bg-gray-100">
+  <div id="app" class="h-full overflow-auto"><!-- Login Page -->
+   <div id="loginPage" class="h-full flex items-center justify-center" style="background: linear-gradient(135deg, #662D91 0%, #7BA4DB 100%);">
+    <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md mx-4 fade-in">
+     <div class="text-center mb-8">
+      <img src="https://cdn.phototourl.com/uploads/2026-02-24-3c51df9e-9143-467a-81b6-d0b942dc2c0a.jpg" alt="LYKN" class="w-20 h-20 mx-auto mb-4 rounded-full object-cover">
+      <h1 class="text-3xl font-bold" style="color: #662D91;">LYKN</h1>
+      <p class="text-gray-500 mt-2">ระบบจัดการเอกสารภายในร้าน</p>
+     </div>
+     <div class="space-y-4">
+      <div><label class="block text-sm font-medium text-gray-700 mb-1">ชื่อผู้ใช้</label> <input type="text" id="loginUsername" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-purple-500" placeholder="กรอกชื่อผู้ใช้">
+      </div>
+      <div><label class="block text-sm font-medium text-gray-700 mb-1">รหัสผ่าน</label>
+       <div class="relative"><input type="password" id="loginPassword" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-purple-500 pr-12" placeholder="กรอกรหัสผ่าน"> <button type="button" onclick="togglePasswordVisibility()" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
+         <svg id="eyeIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+         </svg></button>
+       </div>
+      </div>
+      <div class="flex items-center justify-between"><label class="flex items-center"> <input type="checkbox" id="rememberMe" class="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"> <span class="ml-2 text-sm text-gray-600">จดจำรหัสผ่าน</span> </label> <button type="button" onclick="showForgotPassword()" class="text-sm text-purple-600 hover:text-purple-800">ลืมรหัสผ่าน</button>
+      </div>
+      <div id="loginError" class="hidden text-red-500 text-sm text-center bg-red-50 p-2 rounded"></div><button onclick="handleLogin()" class="w-full py-3 rounded-lg text-white font-semibold btn-primary" style="background: linear-gradient(135deg, #662D91, #7BA4DB);"> เข้าสู่ระบบ </button>
+     </div>
+    </div>
+   </div><!-- Main Application -->
+   <div id="mainApp" class="hidden h-full flex flex-col"><!-- Top Bar -->
+    <header id="topBar" class="h-16 flex items-center justify-between px-6 shadow-md" style="background: linear-gradient(135deg, #662D91, #7BA4DB);">
+     <div class="flex items-center space-x-4"><button id="menuToggle" onclick="toggleSidebar()" class="text-white hover:bg-white/10 p-2 rounded-lg">
+       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+       </svg></button>
+      <div class="flex items-center space-x-2">
+       <img src="https://cdn.phototourl.com/uploads/2026-02-24-3c51df9e-9143-467a-81b6-d0b942dc2c0a.jpg" alt="LYKN" class="w-10 h-10 rounded-full object-cover"> <span class="text-white text-xl font-bold">LYKN</span>
+      </div>
+     </div>
+     <div class="flex items-center space-x-4"><button onclick="showSettings()" class="text-white hover:bg-white/10 p-2 rounded-lg" title="ตั้งค่า">
+       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+       </svg></button>
+      <div class="flex items-center space-x-2 text-white">
+       <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+        <svg class="w-5 h-5" fill="currentColor" viewbox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+        </svg>
+       </div><span id="currentUser" class="font-medium"></span>
+      </div><button onclick="handleLogout()" class="text-white hover:bg-white/10 p-2 rounded-lg" title="ออกจากระบบ">
+       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+       </svg></button>
+     </div>
+    </header>
+    <div class="flex flex-1 overflow-hidden"><!-- Sidebar -->
+     <aside id="sidebar" class="w-64 text-white overflow-y-auto flex-shrink-0 transition-all duration-300" style="background: #662D91;">
+      <nav class="py-4"><!-- เอกสารการขาย -->
+       <div class="mb-2"><button onclick="toggleMenu('sales')" class="w-full flex items-center justify-between px-4 py-3 hover:bg-white/10">
+         <div class="flex items-center space-x-3">
+          <svg class="w-5 h-5" fill="currentColor" viewbox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1 1.05.82 1.87 2.65 1.87 1.96 0 2.4-.98 2.4-1.59 0-.83-.44-1.61-2.67-2.14-2.48-.6-4.18-1.62-4.18-3.67 0-1.72 1.39-2.84 3.11-3.21V4h2.67v1.95c1.86.45 2.79 1.86 2.85 3.39H14.3c-.05-1.11-.64-1.87-2.22-1.87-1.5 0-2.4.68-2.4 1.64 0 .84.65 1.39 2.67 1.91s4.18 1.39 4.18 3.91c-.01 1.83-1.38 2.83-3.12 3.16z" />
+          </svg><span class="font-medium">เอกสารการขาย</span>
+         </div>
+         <svg id="salesArrow" class="w-4 h-4 transition-transform" fill="currentColor" viewbox="0 0 24 24"><path d="M7 10l5 5 5-5z" />
+         </svg></button>
+        <div id="salesMenu" class="hidden bg-black/10"><button onclick="selectDocType('quotation')" class="sidebar-item w-full text-left px-8 py-2 text-sm hover:bg-white/10">ใบเสนอราคา</button> <button onclick="selectDocType('invoice')" class="sidebar-item w-full text-left px-8 py-2 text-sm hover:bg-white/10">ใบแจ้งหนี้</button> <button onclick="selectDocType('receipt')" class="sidebar-item w-full text-left px-8 py-2 text-sm hover:bg-white/10">ใบเสร็จรับเงิน</button> <button onclick="selectDocType('tax_invoice')" class="sidebar-item w-full text-left px-8 py-2 text-sm hover:bg-white/10">ใบกำกับภาษี</button> <button onclick="selectDocType('receipt_tax')" class="sidebar-item w-full text-left px-8 py-2 text-sm hover:bg-white/10">ใบเสร็จรับเงิน/ใบกำกับภาษี</button>
+        </div>
+       </div><!-- เอกสารการซื้อ -->
+       <div class="mb-2"><button onclick="toggleMenu('purchase')" class="w-full flex items-center justify-between px-4 py-3 hover:bg-white/10">
+         <div class="flex items-center space-x-3">
+          <svg class="w-5 h-5" fill="currentColor" viewbox="0 0 24 24"><path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z" />
+          </svg><span class="font-medium">เอกสารการซื้อ</span>
+         </div>
+         <svg id="purchaseArrow" class="w-4 h-4 transition-transform" fill="currentColor" viewbox="0 0 24 24"><path d="M7 10l5 5 5-5z" />
+         </svg></button>
+        <div id="purchaseMenu" class="hidden bg-black/10"><button onclick="selectDocType('purchase_order')" class="sidebar-item w-full text-left px-8 py-2 text-sm hover:bg-white/10">ใบสั่งซื้อ</button> <button onclick="selectDocType('goods_receipt')" class="sidebar-item w-full text-left px-8 py-2 text-sm hover:bg-white/10">ใบรับสินค้า</button> <button onclick="selectDocType('billing')" class="sidebar-item w-full text-left px-8 py-2 text-sm hover:bg-white/10">ใบวางบิล</button>
+        </div>
+       </div><!-- เอกสารบัญชีและภาษี -->
+       <div class="mb-2"><button onclick="toggleMenu('accounting')" class="w-full flex items-center justify-between px-4 py-3 hover:bg-white/10">
+         <div class="flex items-center space-x-3">
+          <svg class="w-5 h-5" fill="currentColor" viewbox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" />
+          </svg><span class="font-medium">เอกสารบัญชีและภาษี</span>
+         </div>
+         <svg id="accountingArrow" class="w-4 h-4 transition-transform" fill="currentColor" viewbox="0 0 24 24"><path d="M7 10l5 5 5-5z" />
+         </svg></button>
+        <div id="accountingMenu" class="hidden bg-black/10"><button onclick="selectDocType('credit_note')" class="sidebar-item w-full text-left px-8 py-2 text-sm hover:bg-white/10">ใบลดหนี้</button> <button onclick="selectDocType('debit_note')" class="sidebar-item w-full text-left px-8 py-2 text-sm hover:bg-white/10">ใบเพิ่มหนี้</button> <button onclick="selectDocType('withholding_tax')" class="sidebar-item w-full text-left px-8 py-2 text-sm hover:bg-white/10">หนังสือรับรองหักภาษี</button>
+        </div>
+       </div><!-- เอกสารภายใน -->
+       <div class="mb-2"><button onclick="toggleMenu('internal')" class="w-full flex items-center justify-between px-4 py-3 hover:bg-white/10">
+         <div class="flex items-center space-x-3">
+          <svg class="w-5 h-5" fill="currentColor" viewbox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z" />
+          </svg><span class="font-medium">เอกสารภายใน</span>
+         </div>
+         <svg id="internalArrow" class="w-4 h-4 transition-transform" fill="currentColor" viewbox="0 0 24 24"><path d="M7 10l5 5 5-5z" />
+         </svg></button>
+        <div id="internalMenu" class="hidden bg-black/10"><button onclick="selectDocType('inventory_report')" class="sidebar-item w-full text-left px-8 py-2 text-sm hover:bg-white/10">รายงานสินค้าคงเหลือ</button> <button onclick="selectDocType('salary_report')" class="sidebar-item w-full text-left px-8 py-2 text-sm hover:bg-white/10">รายงานเงินเดือน</button> <button onclick="selectDocType('meeting_doc')" class="sidebar-item w-full text-left px-8 py-2 text-sm hover:bg-white/10">เอกสารการประชุม</button>
+        </div>
+       </div><!-- เอกสารบริษัท (เฉพาะแอดมิน) -->
+       <div id="companyDocsMenu" class="mb-2 hidden"><button onclick="toggleMenu('company')" class="w-full flex items-center justify-between px-4 py-3 hover:bg-white/10">
+         <div class="flex items-center space-x-3">
+          <svg class="w-5 h-5" fill="currentColor" viewbox="0 0 24 24"><path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z" />
+          </svg><span class="font-medium">เอกสารบริษัท</span>
+         </div>
+         <svg id="companyArrow" class="w-4 h-4 transition-transform" fill="currentColor" viewbox="0 0 24 24"><path d="M7 10l5 5 5-5z" />
+         </svg></button>
+        <div id="companyMenu" class="hidden bg-black/10"><button onclick="selectDocType('company_cert')" class="sidebar-item w-full text-left px-8 py-2 text-sm hover:bg-white/10">หนังสือรับรองบริษัท</button> <button onclick="selectDocType('shareholders')" class="sidebar-item w-full text-left px-8 py-2 text-sm hover:bg-white/10">รายชื่อผู้ถือหุ้น</button> <button onclick="selectDocType('memorandum')" class="sidebar-item w-full text-left px-8 py-2 text-sm hover:bg-white/10">หนังสือบริคณห์สนธิ</button>
+        </div>
+       </div><!-- สินค้าและบริการ -->
+       <div class="mb-2"><button onclick="toggleMenu('inventory')" class="w-full flex items-center justify-between px-4 py-3 hover:bg-white/10">
+         <div class="flex items-center space-x-3">
+          <svg class="w-5 h-5" fill="currentColor" viewbox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+          </svg><span class="font-medium">สินค้าและบริการ</span>
+         </div>
+         <svg id="inventoryArrow" class="w-4 h-4 transition-transform" fill="currentColor" viewbox="0 0 24 24"><path d="M7 10l5 5 5-5z" />
+         </svg></button>
+        <div id="inventoryMenu" class="hidden bg-black/10"><button onclick="showProductsPage()" class="sidebar-item w-full text-left px-8 py-2 text-sm hover:bg-white/10">จัดการสินค้า</button> <button onclick="showServicesPage()" class="sidebar-item w-full text-left px-8 py-2 text-sm hover:bg-white/10">จัดการบริการ</button> <button onclick="showStockPage()" class="sidebar-item w-full text-left px-8 py-2 text-sm hover:bg-white/10">คลังสินค้า</button>
+        </div>
+       </div><!-- จัดการผู้ใช้ (เฉพาะแอดมิน) -->
+       <div id="userManagementMenu" class="mb-2 hidden"><button onclick="toggleMenu('users')" class="w-full flex items-center justify-between px-4 py-3 hover:bg-white/10">
+         <div class="flex items-center space-x-3">
+          <svg class="w-5 h-5" fill="currentColor" viewbox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+          </svg><span class="font-medium">จัดการผู้ใช้</span>
+         </div>
+         <svg id="usersArrow" class="w-4 h-4 transition-transform" fill="currentColor" viewbox="0 0 24 24"><path d="M7 10l5 5 5-5z" />
+         </svg></button>
+        <div id="usersMenu" class="hidden bg-black/10"><button onclick="showUsersPage()" class="sidebar-item w-full text-left px-8 py-2 text-sm hover:bg-white/10">รายชื่อผู้ใช้</button> <button onclick="showAddUserModal()" class="sidebar-item w-full text-left px-8 py-2 text-sm hover:bg-white/10">เพิ่มผู้ใช้ใหม่</button>
+        </div>
+       </div>
+      </nav>
+     </aside><!-- Main Content -->
+     <main class="flex-1 overflow-y-auto bg-gray-50 p-6"><!-- Dashboard -->
+      <div id="dashboardView" class="fade-in">
+       <h2 class="text-2xl font-bold text-gray-800 mb-6">แดชบอร์ด</h2>
+       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white rounded-xl shadow-md p-6 border-l-4" style="border-color: #662D91;">
+         <div class="flex items-center justify-between">
+          <div>
+           <p class="text-gray-500 text-sm">เอกสารทั้งหมด</p>
+           <p id="totalDocs" class="text-3xl font-bold text-gray-800">0</p>
+          </div>
+          <div class="w-12 h-12 rounded-full flex items-center justify-center" style="background: rgba(102,45,145,0.1);">
+           <svg class="w-6 h-6" fill="#662D91" viewbox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6z" />
+           </svg>
+          </div>
+         </div>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-6 border-l-4 border-green-500">
+         <div class="flex items-center justify-between">
+          <div>
+           <p class="text-gray-500 text-sm">ชำระแล้ว</p>
+           <p id="paidDocs" class="text-3xl font-bold text-gray-800">0</p>
+          </div>
+          <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
+           <svg class="w-6 h-6 text-green-500" fill="currentColor" viewbox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+           </svg>
+          </div>
+         </div>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-6 border-l-4 border-yellow-500">
+         <div class="flex items-center justify-between">
+          <div>
+           <p class="text-gray-500 text-sm">ค้างชำระ</p>
+           <p id="pendingDocs" class="text-3xl font-bold text-gray-800">0</p>
+          </div>
+          <div class="w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center">
+           <svg class="w-6 h-6 text-yellow-500" fill="currentColor" viewbox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
+           </svg>
+          </div>
+         </div>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-6 border-l-4" style="border-color: #7BA4DB;">
+         <div class="flex items-center justify-between">
+          <div>
+           <p class="text-gray-500 text-sm">เดือนนี้</p>
+           <p id="monthDocs" class="text-3xl font-bold text-gray-800">0</p>
+          </div>
+          <div class="w-12 h-12 rounded-full flex items-center justify-center" style="background: rgba(123,164,219,0.1);">
+           <svg class="w-6 h-6" fill="#7BA4DB" viewbox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM9 10H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2z" />
+           </svg>
+          </div>
+         </div>
+        </div>
+       </div>
+       <div class="bg-white rounded-xl shadow-md p-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">เอกสารล่าสุด</h3>
+        <div id="recentDocs" class="space-y-3">
+         <p class="text-gray-500 text-center py-8">ยังไม่มีเอกสาร</p>
+        </div>
+       </div>
+      </div><!-- Document List View -->
+      <div id="docListView" class="hidden fade-in">
+       <div class="flex items-center justify-between mb-6">
+        <div>
+         <h2 id="docListTitle" class="text-2xl font-bold text-gray-800"></h2>
+         <p id="docListSubtitle" class="text-gray-500"></p>
+        </div><button onclick="createNewDocument()" class="flex items-center space-x-2 px-6 py-3 rounded-lg text-white font-semibold btn-primary" style="background: linear-gradient(135deg, #662D91, #7BA4DB);">
+         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+         </svg><span>สร้างเอกสารใหม่</span> </button>
+       </div>
+       <div class="bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="overflow-x-auto">
+         <table class="w-full">
+          <thead style="background: #662D91;">
+           <tr>
+            <th class="text-left text-white font-semibold px-6 py-4">เลขที่เอกสาร</th>
+            <th class="text-left text-white font-semibold px-6 py-4">ลูกค้า/ผู้ขาย</th>
+            <th class="text-left text-white font-semibold px-6 py-4">วันที่</th>
+            <th class="text-right text-white font-semibold px-6 py-4">ยอดรวม</th>
+            <th class="text-center text-white font-semibold px-6 py-4">สถานะ</th>
+            <th class="text-center text-white font-semibold px-6 py-4">จัดการ</th>
+           </tr>
+          </thead>
+          <tbody id="docTableBody">
+           <tr>
+            <td colspan="6" class="text-center py-8 text-gray-500">ยังไม่มีเอกสาร</td>
+           </tr>
+          </tbody>
+         </table>
+        </div>
+       </div>
+      </div><!-- Document Form View -->
+      <div id="docFormView" class="hidden fade-in">
+       <div class="flex items-center justify-between mb-6 no-print">
+        <div class="flex items-center space-x-4"><button onclick="backToList()" class="p-2 rounded-lg hover:bg-gray-200">
+          <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg></button>
+         <div>
+          <h2 id="docFormTitle" class="text-2xl font-bold text-gray-800"></h2>
+          <p id="docFormNumber" class="text-gray-500"></p>
+         </div>
+        </div>
+        <div class="flex items-center space-x-3"><!-- สำหรับใบเสนอราคา: เปลี่ยนประเภทเอกสาร -->
+         <div id="convertDocSection" class="hidden"><select id="convertDocType" onchange="handleConvertDoc()" class="px-4 py-2 border border-gray-300 rounded-lg focus:border-purple-500"> <option value="">เปลี่ยนเป็นเอกสารอื่น</option> <option value="invoice">ใบแจ้งหนี้</option> <option value="receipt">ใบเสร็จรับเงิน</option> <option value="tax_invoice">ใบกำกับภาษี</option> <option value="billing">ใบวางบิล</option> <option value="receipt_tax">ใบเสร็จรับเงิน/ใบกำกับภาษี</option> </select>
+         </div><button onclick="printDocument()" class="p-2 rounded-lg hover:bg-gray-200" title="พิมพ์เอกสาร">
+          <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+          </svg></button> <button onclick="saveDocument()" id="saveDocBtn" class="flex items-center space-x-2 px-6 py-2 rounded-lg text-white font-semibold btn-primary" style="background: linear-gradient(135deg, #662D91, #7BA4DB);">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg><span>บันทึก</span> </button>
+        </div>
+       </div>
+       <div class="bg-white rounded-xl shadow-md p-6 mb-6"><!-- Document Header -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+         <div>
+          <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+           <svg class="w-5 h-5 mr-2" fill="#662D91" viewbox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+           </svg><span id="customerLabel">ข้อมูลลูกค้า</span></h3>
+          <div class="space-y-4">
+           <div><label class="block text-sm font-medium text-gray-700 mb-1">ชื่อ</label> <input type="text" id="customerName" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="กรอกชื่อลูกค้า/ผู้ขาย">
+           </div>
+           <div><label class="block text-sm font-medium text-gray-700 mb-1">ที่อยู่</label> <textarea id="customerAddress" rows="2" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="กรอกที่อยู่"></textarea>
+           </div>
+           <div class="grid grid-cols-2 gap-4">
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">เลขประจำตัวผู้เสียภาษี</label> <input type="text" id="customerTax" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="กรอกเลขประจำตัว">
+            </div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">โทรศัพท์</label> <input type="text" id="customerPhone" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="กรอกเบอร์โทร">
+            </div>
+           </div>
+          </div>
+         </div>
+         <div>
+          <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+           <svg class="w-5 h-5 mr-2" fill="#662D91" viewbox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6z" />
+           </svg> ข้อมูลเอกสาร</h3>
+          <div class="space-y-4">
+           <div><label class="block text-sm font-medium text-gray-700 mb-1">เลขที่เอกสาร</label> <input type="text" id="docNumber" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100" readonly>
+           </div>
+           <div><label class="block text-sm font-medium text-gray-700 mb-1">วันที่เอกสาร</label> <input type="date" id="docDate" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+           </div>
+           <div><label class="block text-sm font-medium text-gray-700 mb-1">สถานะ</label> <select id="docStatus" class="w-full px-4 py-2 border border-gray-300 rounded-lg"> <option value="pending">ค้างชำระ</option> <option value="paid">จ่ายแล้ว</option> <option value="cancelled">ยกเลิก</option> </select>
+           </div>
+           <div id="vatOptionSection" class="hidden"><label class="flex items-center"> <input type="checkbox" id="includeVat" class="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500" onchange="calculateTotals()"> <span class="ml-2 text-sm text-gray-700">คิดภาษีมูลค่าเพิ่ม 7%</span> </label>
+           </div>
+          </div>
+         </div>
+        </div><!-- Items Section -->
+        <div class="border-t pt-6">
+         <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-semibold text-gray-800 flex items-center">
+           <svg class="w-5 h-5 mr-2" fill="#662D91" viewbox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" />
+           </svg> รายการสินค้า</h3><button onclick="showAddItemModal()" class="flex items-center space-x-2 px-4 py-2 rounded-lg text-white btn-primary" style="background: #662D91;">
+           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+           </svg><span>เพิ่มสินค้า</span> </button>
+         </div>
+         <div class="overflow-x-auto">
+          <table class="w-full">
+           <thead class="bg-gray-100">
+            <tr>
+             <th class="text-left font-semibold px-4 py-3 text-gray-700">ลำดับ</th>
+             <th class="text-left font-semibold px-4 py-3 text-gray-700">รายการ</th>
+             <th class="text-center font-semibold px-4 py-3 text-gray-700">จำนวน</th>
+             <th class="text-right font-semibold px-4 py-3 text-gray-700">ราคา/หน่วย</th>
+             <th class="text-right font-semibold px-4 py-3 text-gray-700">ส่วนลด</th>
+             <th class="text-right font-semibold px-4 py-3 text-gray-700">รวม</th>
+             <th class="text-center font-semibold px-4 py-3 text-gray-700">จัดการ</th>
+            </tr>
+           </thead>
+           <tbody id="itemsTableBody">
+            <tr>
+             <td colspan="7" class="text-center py-8 text-gray-500">ยังไม่มีรายการสินค้า</td>
+            </tr>
+           </tbody>
+          </table>
+         </div>
+        </div><!-- Totals Section -->
+        <div class="border-t pt-6 mt-6">
+         <div class="flex justify-end">
+          <div class="w-full max-w-sm space-y-3">
+           <div class="flex justify-between"><span class="text-gray-600">ยอดรวม</span> <span id="subtotalDisplay" class="font-semibold">0.00 บาท</span>
+           </div>
+           <div class="flex justify-between items-center"><span class="text-gray-600">ส่วนลด</span>
+            <div class="flex items-center space-x-2"><input type="number" id="discountInput" value="0" min="0" class="w-24 px-3 py-1 border border-gray-300 rounded text-right" onchange="calculateTotals()"> <span>บาท</span>
+            </div>
+           </div>
+           <div id="vatRow" class="hidden flex justify-between"><span class="text-gray-600">ภาษีมูลค่าเพิ่ม 7%</span> <span id="vatDisplay" class="font-semibold">0.00 บาท</span>
+           </div>
+           <div class="flex justify-between text-lg pt-3 border-t"><span class="font-bold" style="color: #662D91;">ยอดสุทธิ</span> <span id="totalDisplay" class="font-bold" style="color: #662D91;">0.00 บาท</span>
+           </div>
+          </div>
+         </div>
+        </div><!-- Remarks -->
+        <div class="border-t pt-6 mt-6"><label class="block text-sm font-medium text-gray-700 mb-2">หมายเหตุ</label> <textarea id="docRemarks" rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="หมายเหตุเพิ่มเติม"></textarea>
+        </div><!-- Document Info -->
+        <div class="border-t pt-4 mt-6 text-sm text-gray-500">
+         <p>เพิ่มโดย: <span id="createdByDisplay">-</span></p>
+         <p>วันที่เพิ่ม: <span id="createdAtDisplay">-</span></p>
+         <p>แก้ไขล่าสุด: <span id="updatedAtDisplay">-</span></p>
+        </div>
+       </div>
+      </div><!-- Products Management -->
+      <div id="productsView" class="hidden fade-in">
+       <div class="flex items-center justify-between mb-6 no-print">
+        <h2 class="text-2xl font-bold text-gray-800">จัดการสินค้า</h2><button onclick="showAddProductModal()" class="flex items-center space-x-2 px-6 py-3 rounded-lg text-white font-semibold btn-primary" style="background: linear-gradient(135deg, #662D91, #7BA4DB);">
+         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+         </svg><span>เพิ่มสินค้า</span> </button>
+       </div>
+       <div class="bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="overflow-x-auto">
+         <table class="w-full">
+          <thead style="background: #662D91;">
+           <tr>
+            <th class="text-left text-white font-semibold px-6 py-4">รหัสสินค้า</th>
+            <th class="text-left text-white font-semibold px-6 py-4">ชื่อสินค้า</th>
+            <th class="text-left text-white font-semibold px-6 py-4">หมวดหมู่</th>
+            <th class="text-center text-white font-semibold px-6 py-4">คงเหลือ</th>
+            <th class="text-right text-white font-semibold px-6 py-4">ราคาขาย</th>
+            <th class="text-center text-white font-semibold px-6 py-4">จัดการ</th>
+           </tr>
+          </thead>
+          <tbody id="productsTableBody">
+           <tr>
+            <td colspan="6" class="text-center py-8 text-gray-500">ยังไม่มีสินค้า</td>
+           </tr>
+          </tbody>
+         </table>
+        </div>
+       </div>
+       <div class="mt-6"><button onclick="backToDashboard()" class="flex items-center space-x-2 px-6 py-2 rounded-lg text-gray-700 border border-gray-300 hover:bg-gray-100">
+         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+         </svg><span>กลับ</span> </button>
+       </div>
+      </div><!-- Stock Report -->
+      <div id="stockView" class="hidden fade-in">
+       <div class="flex items-center justify-between mb-6 no-print">
+        <h2 class="text-2xl font-bold text-gray-800">รายงานสินค้าคงเหลือ</h2>
+       </div>
+       <div class="bg-white rounded-xl shadow-md overflow-hidden mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 p-6 border-b">
+         <div class="text-center">
+          <p class="text-gray-600 text-sm">เพียงพอ</p>
+          <p id="stockOkCount" class="text-3xl font-bold text-green-600">0</p>
+         </div>
+         <div class="text-center">
+          <p class="text-gray-600 text-sm">ใกล้หมด</p>
+          <p id="stockLowCount" class="text-3xl font-bold text-yellow-600">0</p>
+         </div>
+         <div class="text-center">
+          <p class="text-gray-600 text-sm">หมดสต็อก</p>
+          <p id="stockOutCount" class="text-3xl font-bold text-red-600">0</p>
+         </div>
+        </div>
+        <div class="overflow-x-auto">
+         <table class="w-full">
+          <thead style="background: #662D91;">
+           <tr>
+            <th class="text-left text-white font-semibold px-6 py-4">รหัสสินค้า</th>
+            <th class="text-left text-white font-semibold px-6 py-4">ชื่อสินค้า</th>
+            <th class="text-left text-white font-semibold px-6 py-4">หมวดหมู่</th>
+            <th class="text-center text-white font-semibold px-6 py-4">คงเหลือ</th>
+            <th class="text-center text-white font-semibold px-6 py-4">ขั้นต่ำ</th>
+            <th class="text-center text-white font-semibold px-6 py-4">สถานะ</th>
+            <th class="text-right text-white font-semibold px-6 py-4">มูลค่า</th>
+           </tr>
+          </thead>
+          <tbody id="stockTableBody">
+           <tr>
+            <td colspan="7" class="text-center py-8 text-gray-500">โหลดข้อมูล...</td>
+           </tr>
+          </tbody>
+         </table>
+        </div>
+       </div>
+       <div class="mt-6"><button onclick="backToDashboard()" class="flex items-center space-x-2 px-6 py-2 rounded-lg text-gray-700 border border-gray-300 hover:bg-gray-100">
+         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+         </svg><span>กลับ</span> </button>
+       </div>
+      </div><!-- Services Management -->
+      <div id="servicesView" class="hidden fade-in">
+       <div class="flex items-center justify-between mb-6 no-print">
+        <h2 class="text-2xl font-bold text-gray-800">จัดการบริการ</h2><button onclick="showAddServiceModal()" class="flex items-center space-x-2 px-6 py-3 rounded-lg text-white font-semibold btn-primary" style="background: linear-gradient(135deg, #662D91, #7BA4DB);">
+         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+         </svg><span>เพิ่มบริการ</span> </button>
+       </div>
+       <div class="bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="overflow-x-auto">
+         <table class="w-full">
+          <thead style="background: #662D91;">
+           <tr>
+            <th class="text-left text-white font-semibold px-6 py-4">รหัสบริการ</th>
+            <th class="text-left text-white font-semibold px-6 py-4">ชื่อบริการ</th>
+            <th class="text-left text-white font-semibold px-6 py-4">รายละเอียด</th>
+            <th class="text-center text-white font-semibold px-6 py-4">ระยะเวลา</th>
+            <th class="text-right text-white font-semibold px-6 py-4">ราคา</th>
+            <th class="text-center text-white font-semibold px-6 py-4">จัดการ</th>
+           </tr>
+          </thead>
+          <tbody id="servicesTableBody">
+           <tr>
+            <td colspan="6" class="text-center py-8 text-gray-500">ยังไม่มีบริการ</td>
+           </tr>
+          </tbody>
+         </table>
+        </div>
+       </div>
+       <div class="mt-6"><button onclick="backToDashboard()" class="flex items-center space-x-2 px-6 py-2 rounded-lg text-gray-700 border border-gray-300 hover:bg-gray-100">
+         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+         </svg><span>กลับ</span> </button>
+       </div>
+      </div><!-- Users Management -->
+      <div id="usersView" class="hidden fade-in">
+       <div class="flex items-center justify-between mb-6 no-print">
+        <h2 class="text-2xl font-bold text-gray-800">จัดการผู้ใช้</h2><button onclick="showAddUserModal()" class="flex items-center space-x-2 px-6 py-3 rounded-lg text-white font-semibold btn-primary" style="background: linear-gradient(135deg, #662D91, #7BA4DB);">
+         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+         </svg><span>เพิ่มผู้ใช้</span> </button>
+       </div>
+       <div class="bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="overflow-x-auto">
+         <table class="w-full">
+          <thead style="background: #662D91;">
+           <tr>
+            <th class="text-left text-white font-semibold px-6 py-4">ชื่อผู้ใช้</th>
+            <th class="text-left text-white font-semibold px-6 py-4">บทบาท</th>
+            <th class="text-center text-white font-semibold px-6 py-4">สถานะ</th>
+            <th class="text-left text-white font-semibold px-6 py-4">วันที่สร้าง</th>
+            <th class="text-center text-white font-semibold px-6 py-4">จัดการ</th>
+           </tr>
+          </thead>
+          <tbody id="usersTableBody">
+           <tr>
+            <td colspan="5" class="text-center py-8 text-gray-500">โหลดข้อมูลผู้ใช้...</td>
+           </tr>
+          </tbody>
+         </table>
+        </div>
+       </div>
+       <div class="mt-6"><button onclick="backToDashboard()" class="flex items-center space-x-2 px-6 py-2 rounded-lg text-gray-700 border border-gray-300 hover:bg-gray-100">
+         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+         </svg><span>กลับ</span> </button>
+       </div>
+      </div>
+     </main>
+    </div>
+   </div><!-- Add Service Modal -->
+   <div id="addServiceModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 fade-in max-h-96 overflow-y-auto">
+     <div class="p-6 border-b sticky top-0 bg-white flex items-center justify-between" style="background: linear-gradient(135deg, #662D91, #7BA4DB) !important;">
+      <h3 class="text-xl font-bold text-white">เพิ่มบริการ</h3><button onclick="closeAddServiceModal()" class="text-white hover:bg-white/10 p-1 rounded">
+       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+       </svg></button>
+     </div>
+     <div class="p-6 space-y-4">
+      <div><label class="block text-sm font-medium text-gray-700 mb-1">รหัสบริการ</label> <input type="text" id="serviceSKU" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="เช่น SVC001">
+      </div>
+      <div><label class="block text-sm font-medium text-gray-700 mb-1">ชื่อบริการ</label> <input type="text" id="serviceName" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="กรอกชื่อบริการ">
+      </div>
+      <div><label class="block text-sm font-medium text-gray-700 mb-1">รายละเอียด</label> <textarea id="serviceDescription" rows="2" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="อธิบายบริการ"></textarea>
+      </div>
+      <div><label class="block text-sm font-medium text-gray-700 mb-1">ระยะเวลา</label> <input type="text" id="serviceDuration" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="เช่น 1 วัน, 2 ชั่วโมง">
+      </div>
+      <div><label class="block text-sm font-medium text-gray-700 mb-1">ราคาค่าบริการ</label> <input type="number" id="servicePrice" value="0" min="0" step="0.01" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+      </div>
+     </div>
+     <div class="p-6 border-t flex justify-end space-x-3"><button onclick="closeAddServiceModal()" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100">ยกเลิก</button> <button onclick="addService()" class="px-6 py-2 rounded-lg text-white btn-primary" style="background: #662D91;">บันทึกบริการ</button>
+     </div>
+    </div>
+   </div><!-- Add Item Modal --> <!-- Add Item Modal - Select from Products/Services -->
+   <div id="addItemModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 fade-in max-h-96 overflow-y-auto">
+     <div class="p-6 border-b sticky top-0 bg-white flex items-center justify-between" style="background: linear-gradient(135deg, #662D91, #7BA4DB) !important;">
+      <h3 class="text-xl font-bold text-white">เพิ่มสินค้า/บริการ</h3><button onclick="closeAddItemModal()" class="text-white hover:bg-white/10 p-1 rounded">
+       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+       </svg></button>
+     </div>
+     <div class="p-6"><!-- Tab Selection -->
+      <div class="flex border-b mb-4"><button id="selectProductsTab" onclick="switchAddItemTab('products')" class="px-4 py-2 font-medium text-gray-700 border-b-2 border-transparent hover:border-gray-300 tab-active" style="border-bottom-color: #662D91 !important;">สินค้า</button> <button id="selectServicesTab" onclick="switchAddItemTab('services')" class="px-4 py-2 font-medium text-gray-700 border-b-2 border-transparent hover:border-gray-300">บริการ</button> <button onclick="switchAddItemManual()" class="ml-auto px-4 py-2 font-medium text-gray-700 border-b-2 border-transparent hover:border-gray-300 flex items-center space-x-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg><span>เพิ่มใหม่</span> </button>
+      </div><!-- Products List -->
+      <div id="productsListTab" class="space-y-2">
+       <div id="productsList" class="space-y-2 max-h-64 overflow-y-auto">
+        <p class="text-gray-500 text-center py-4">กำลังโหลดสินค้า...</p>
+       </div>
+      </div><!-- Services List -->
+      <div id="servicesListTab" class="hidden space-y-2">
+       <div id="servicesList" class="space-y-2 max-h-64 overflow-y-auto">
+        <p class="text-gray-500 text-center py-4">กำลังโหลดบริการ...</p>
+       </div>
+      </div><!-- Manual Entry -->
+      <div id="manualEntryTab" class="hidden space-y-4">
+       <div><label class="block text-sm font-medium text-gray-700 mb-1">ชื่อสินค้า/บริการ</label> <input type="text" id="itemName" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="กรอกชื่อสินค้า/บริการ">
+       </div>
+       <div class="grid grid-cols-2 gap-4">
+        <div><label class="block text-sm font-medium text-gray-700 mb-1">จำนวน</label> <input type="number" id="itemQty" value="1" min="1" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+        </div>
+        <div><label class="block text-sm font-medium text-gray-700 mb-1">หน่วย</label> <input type="text" id="itemUnit" value="ชิ้น" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+        </div>
+       </div>
+       <div class="grid grid-cols-2 gap-4">
+        <div><label class="block text-sm font-medium text-gray-700 mb-1">ราคา/หน่วย</label> <input type="number" id="itemPrice" value="0" min="0" step="0.01" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+        </div>
+        <div><label class="block text-sm font-medium text-gray-700 mb-1">ส่วนลด</label> <input type="number" id="itemDiscount" value="0" min="0" step="0.01" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+        </div>
+       </div>
+      </div>
+     </div>
+     <div class="p-6 border-t flex justify-end space-x-3"><button onclick="closeAddItemModal()" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100">ยกเลิก</button> <button onclick="addItem()" class="px-6 py-2 rounded-lg text-white btn-primary" style="background: #662D91;">เพิ่มสินค้า</button>
+     </div>
+    </div>
+   </div><!-- Add Product Modal -->
+   <div id="addProductModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 fade-in max-h-96 overflow-y-auto">
+     <div class="p-6 border-b sticky top-0 bg-white flex items-center justify-between" style="background: linear-gradient(135deg, #662D91, #7BA4DB) !important;">
+      <h3 class="text-xl font-bold text-white">เพิ่มสินค้า</h3><button onclick="closeAddProductModal()" class="text-white hover:bg-white/10 p-1 rounded">
+       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+       </svg></button>
+     </div>
+     <div class="p-6 space-y-4">
+      <div><label class="block text-sm font-medium text-gray-700 mb-1">รหัสสินค้า</label> <input type="text" id="prodSKU" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="เช่น SKU001">
+      </div>
+      <div><label class="block text-sm font-medium text-gray-700 mb-1">ชื่อสินค้า</label> <input type="text" id="prodName" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="กรอกชื่อสินค้า">
+      </div>
+      <div><label class="block text-sm font-medium text-gray-700 mb-1">หมวดหมู่</label> <select id="prodCategory" class="w-full px-4 py-2 border border-gray-300 rounded-lg"> <option value="">เลือกหมวดหมู่</option> <option value="ปลั๊กไฟ">ปลั๊กไฟ</option> <option value="หลอดไฟ">หลอดไฟ</option> <option value="สายไฟ">สายไฟ</option> <option value="เบรกเกอร์">เบรกเกอร์</option> <option value="หางปลา">หางปลา</option> <option value="เคเบิ้ลไทม์">เคเบิ้ลไทม์</option> <option value="ท่อ PVC">ท่อ PVC</option> </select>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+       <div><label class="block text-sm font-medium text-gray-700 mb-1">หน่วย</label> <select id="prodUnit" class="w-full px-4 py-2 border border-gray-300 rounded-lg"> <option value="ชิ้น">ชิ้น</option> <option value="อัน">อัน</option> <option value="เมตร">เมตร</option> <option value="ม้วน">ม้วน</option> <option value="ตัว">ตัว</option> <option value="เส้น">เส้น</option> </select>
+       </div>
+       <div><label class="block text-sm font-medium text-gray-700 mb-1">คงเหลือ</label> <input type="number" id="prodStock" value="0" min="0" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+       </div>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+       <div><label class="block text-sm font-medium text-gray-700 mb-1">ราคาทุน</label> <input type="number" id="prodCost" value="0" min="0" step="0.01" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+       </div>
+       <div><label class="block text-sm font-medium text-gray-700 mb-1">ราคาขาย</label> <input type="number" id="prodSell" value="0" min="0" step="0.01" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+       </div>
+      </div>
+      <div><label class="block text-sm font-medium text-gray-700 mb-1">จำนวนขั้นต่ำที่เตือน</label> <input type="number" id="prodMinStock" value="10" min="0" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="เตือนเมื่อคงเหลือน้อยกว่านี้">
+      </div>
+      <div><label class="block text-sm font-medium text-gray-700 mb-1">สถานที่จัดเก็บ</label> <input type="text" id="prodWarehouse" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="เช่น ชั้น 1, ตู้ A">
+      </div>
+     </div>
+     <div class="p-6 border-t flex justify-end space-x-3"><button onclick="closeAddProductModal()" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100">ยกเลิก</button> <button onclick="addProduct()" class="px-6 py-2 rounded-lg text-white btn-primary" style="background: #662D91;">บันทึกสินค้า</button>
+     </div>
+    </div>
+   </div><!-- Add User Modal -->
+   <div id="addUserModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 fade-in">
+     <div class="p-6 border-b flex items-center justify-between" style="background: linear-gradient(135deg, #662D91, #7BA4DB);">
+      <h3 class="text-xl font-bold text-white">เพิ่มผู้ใช้ใหม่</h3><button onclick="closeAddUserModal()" class="text-white hover:bg-white/10 p-1 rounded">
+       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+       </svg></button>
+     </div>
+     <div class="p-6 space-y-4">
+      <div><label class="block text-sm font-medium text-gray-700 mb-1">ชื่อผู้ใช้</label> <input type="text" id="newUsername" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="กรอกชื่อผู้ใช้">
+      </div>
+      <div><label class="block text-sm font-medium text-gray-700 mb-1">รหัสผ่าน</label> <input type="password" id="newPassword" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="กรอกรหัสผ่าน">
+      </div>
+      <div><label class="block text-sm font-medium text-gray-700 mb-1">ชื่อเต็ม</label> <input type="text" id="newFullName" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="กรอกชื่อเต็ม">
+      </div>
+      <div><label class="block text-sm font-medium text-gray-700 mb-1">บทบาท</label> <select id="newUserRole" class="w-full px-4 py-2 border border-gray-300 rounded-lg"> <option value="staff">พนักงาน</option> <option value="accounting">ฝ่ายบัญชี</option> <option value="procurement">ฝ่ายจัดซื้อ</option> </select>
+      </div>
+      <p class="text-sm text-gray-500 bg-blue-50 p-3 rounded">สิทธิ์การใช้งานจะถูกกำหนดโดยผู้ดูแลระบบ</p>
+     </div>
+     <div class="p-6 border-t flex justify-end space-x-3"><button onclick="closeAddUserModal()" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100">ยกเลิก</button> <button onclick="addUser()" class="px-6 py-2 rounded-lg text-white btn-primary" style="background: #662D91;">สร้างบัญชี</button>
+     </div>
+    </div>
+   </div><!-- Settings Modal -->
+   <div id="settingsModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 fade-in max-h-96 overflow-y-auto">
+     <div class="p-6 border-b sticky top-0 bg-white flex items-center justify-between" style="background: linear-gradient(135deg, #662D91, #7BA4DB) !important;">
+      <h3 class="text-xl font-bold text-white">ตั้งค่าระบบ</h3><button onclick="closeSettings()" class="text-white hover:bg-white/10 p-1 rounded">
+       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+       </svg></button>
+     </div>
+     <div class="p-6 space-y-6">
+      <div>
+       <h4 class="font-semibold text-gray-800 mb-3">สีธีม</h4>
+       <div class="grid grid-cols-2 gap-4">
+        <div><label class="block text-sm text-gray-600 mb-1">สีหลัก (PMS2597)</label> <input type="color" id="primaryColor" value="#662D91" class="w-full h-10 rounded cursor-pointer">
+        </div>
+        <div><label class="block text-sm text-gray-600 mb-1">สีรอง (PMS650)</label> <input type="color" id="secondaryColor" value="#7BA4DB" class="w-full h-10 rounded cursor-pointer">
+        </div>
+       </div>
+      </div>
+      <div>
+       <h4 class="font-semibold text-gray-800 mb-3">ข้อมูลบริษัท</h4>
+       <div class="space-y-3">
+        <div><label class="block text-sm text-gray-600 mb-1">ชื่อบริษัท</label> <input type="text" id="settingCompanyName" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="กรอกชื่อบริษัท">
+        </div>
+        <div><label class="block text-sm text-gray-600 mb-1">ที่อยู่</label> <textarea id="settingCompanyAddress" rows="2" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="กรอกที่อยู่บริษัท"></textarea>
+        </div>
+        <div><label class="block text-sm text-gray-600 mb-1">เลขประจำตัวผู้เสียภาษี</label> <input type="text" id="settingCompanyTax" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="กรอกเลขประจำตัว">
+        </div>
+       </div>
+      </div>
+     </div>
+     <div class="p-6 border-t flex justify-end space-x-3"><button onclick="resetTheme()" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100">รีเซ็ตธีม</button> <button onclick="saveSettings()" class="px-6 py-2 rounded-lg text-white btn-primary" style="background: #662D91;">บันทึก</button>
+     </div>
+    </div>
+   </div><!-- Forgot Password Modal -->
+   <div id="forgotPasswordModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 fade-in">
+     <div class="p-6 border-b flex items-center justify-between" style="background: linear-gradient(135deg, #662D91, #7BA4DB);">
+      <h3 class="text-xl font-bold text-white">ลืมรหัสผ่าน</h3><button onclick="closeForgotPassword()" class="text-white hover:bg-white/10 p-1 rounded">
+       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+       </svg></button>
+     </div>
+     <div class="p-6">
+      <p class="text-gray-600 mb-4">กรุณาติดต่อผู้ดูแลระบบเพื่อรีเซ็ตรหัสผ่านของคุณ</p>
+      <div class="bg-gray-100 p-4 rounded-lg">
+       <p class="text-sm text-gray-700">ติดต่อ: admin@lykn.com</p>
+       <p class="text-sm text-gray-700">บัญชีแอดมิน: 39917@suansri.ac.th</p>
+      </div>
+     </div>
+     <div class="p-6 border-t flex justify-end"><button onclick="closeForgotPassword()" class="px-6 py-2 rounded-lg text-white btn-primary" style="background: #662D91;">ตกลง</button>
+     </div>
+    </div>
+   </div><!-- Delete Confirmation Modal -->
+   <div id="deleteConfirmModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 fade-in">
+     <div class="p-6 text-center">
+      <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
+       <svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+       </svg>
+      </div>
+      <h3 class="text-xl font-bold text-gray-800 mb-2">ยืนยันการลบ</h3>
+      <p class="text-gray-600 mb-6">คุณต้องการลบข้อมูลนี้หรือไม่</p>
+      <div class="flex justify-center space-x-3"><button onclick="closeDeleteConfirm()" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100">ยกเลิก</button> <button onclick="confirmDelete()" class="px-6 py-2 rounded-lg text-white bg-red-500 hover:bg-red-600">ลบ</button>
+      </div>
+     </div>
+    </div>
+   </div><!-- Toast Notification -->
+   <div id="toast" class="hidden fixed bottom-6 right-6 z-50 px-6 py-3 rounded-lg shadow-lg text-white fade-in" style="background: #662D91;"><span id="toastMessage"></span>
+   </div><!-- Loading Overlay -->
+   <div id="loadingOverlay" class="hidden fixed inset-0 z-50 flex items-center justify-center" style="background: rgba(102, 45, 145, 0.9);">
+    <div class="text-center">
+     <div class="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+     <p class="text-white text-lg">กำลังโหลด...</p>
+    </div>
+   </div>
+  </div>
+  <script>
+    // Google Sheets Configuration
+    const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx-aHV1CWBK1EUEaPi7ev9wIriMU6wqrChh0ZHTsPxWGmntvWPj4cA7lNBkeVQANdlp/exec';
+    const SPREADSHEET_ID = '1xBn1V0qIrHm72uu8GO1OUFBkn6oD8MdSdGXl40ATuf8';
+
+    // Send data to Google Sheets with improved error handling
+    async function sendToGoogleSheets(sheetName, data) {
+      try {
+        const payload = {
+          action: 'append',
+          sheetName: sheetName,
+          data: data,
+          timestamp: new Date().toISOString()
+        };
+
+        const response = await fetch(GOOGLE_SCRIPT_URL, {
+          method: 'POST',
+          mode: 'cors',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        // Parse response even with no-cors
+        const text = await response.text();
+        console.log('Google Sheets response:', text);
+        console.log('Data sent to Google Sheets:', sheetName, data);
+        return true;
+      } catch (error) {
+        console.error('Error sending to Google Sheets:', error);
+        // Still mark as success locally since data is stored
+        return true;
+      }
+    }
+
+    // Get data from Google Sheets
+    async function getFromGoogleSheets(sheetName) {
+      try {
+        const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=read&sheet=${sheetName}`, {
+          method: 'GET',
+          mode: 'cors',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          console.error('Error fetching from Google Sheets');
+          return [];
+        }
+
+        const data = await response.json();
+        return data || [];
+      } catch (error) {
+        console.error('Error getting from Google Sheets:', error);
+        return [];
+      }
+    }
+
+    // Generate PDF representation (for future PDF export feature)
+    function generatePDFData(document) {
+      const items = JSON.parse(document.items || '[]');
+      const config = docTypeConfig[document.docType];
+
+      let pdfContent = `
+เลขที่เอกสาร: ${document.docNumber}
+ประเภท: ${config?.name || 'เอกสาร'}
+วันที่: ${formatDate(document.createdAt)}
+
+ข้อมูลลูกค้า/ผู้ขาย:
+${document.customerName}
+${document.customerAddress}
+เลขประจำตัว: ${document.customerTax}
+โทร: ${document.customerPhone}
+
+รายการสินค้า/บริการ:
+`;
+
+      items.forEach((item, index) => {
+        pdfContent += `
+${index + 1}. ${item.name}
+   จำนวน: ${item.qty} ${item.unit}
+   ราคา: ${formatNumber(item.price)} x ${item.qty} = ${formatNumber(item.total)}
+   ส่วนลด: ${formatNumber(item.discount)}`;
+      });
+
+      pdfContent += `
+
+สรุป:
+ยอดรวม: ${formatNumber(document.subtotal)}
+ส่วนลด: ${formatNumber(document.discount)}
+ภาษี: ${formatNumber(document.vat)}
+ยอดสุทธิ: ${formatNumber(document.total)}
+
+หมายเหตุ: ${document.remarks || '-'}
+เพิ่มโดย: ${document.createdBy}
+วันที่เพิ่ม: ${formatDateTime(document.createdAt)}
+      `;
+
+      return pdfContent;
+    }
+
+    // Application State
+    let currentUser = null;
+    let allDocuments = [];
+    let allProducts = [];
+    let allServices = [];
+    let allUsers = [];
+    let currentDocType = '';
+    let currentDocItems = [];
+    let editingDocument = null;
+    let deleteDocId = null;
+    let documentCounters = {};
+
+    // Default Config
+    const defaultConfig = {
+        primary_color: '#662D91',
+        secondary_color: '#7BA4DB',
+        company_name: 'LYKN',
+        company_address: '',
+        company_tax_id: ''
+    };
+
+    // Users Database (เก็บไว้ใน localStorage)
+    let registeredUsers = JSON.parse(localStorage.getItem('lykn_users') || '[]');
+
+    // Initialize with admin account if empty
+    if (registeredUsers.length === 0) {
+        registeredUsers = [
+            { id: 'admin001', username: 'admin', password: 'admin123', fullName: 'ผู้ดูแลระบบ', role: 'admin', status: 'active', createdAt: new Date().toISOString() },
+            { id: 'admin002', username: '39917@suansri.ac.th', password: 'rmjiny45', fullName: 'ผู้ดูแลระบบ', role: 'admin', status: 'active', createdAt: new Date().toISOString() }
+        ];
+        localStorage.setItem('lykn_users', JSON.stringify(registeredUsers));
+        
+        // Send admin accounts to Google Sheets
+        sendToGoogleSheets('ผู้ใช้', {
+            'รหัสผู้ใช้': 'admin002',
+            'ชื่อ-นามสกุล': 'ผู้ดูแลระบบ',
+            'อีเมล': '39917@suansri.ac.th',
+            'บทบาท': 'ผู้ดูแลระบบ',
+            'วันที่สร้าง': new Date().toLocaleString('th-TH')
+        });
+    }
+
+    // Document Types Configuration
+    const docTypeConfig = {
+        quotation: { prefix: 'QT', name: 'ใบเสนอราคา', category: 'sales', customerLabel: 'ข้อมูลลูกค้า' },
+        invoice: { prefix: 'INV', name: 'ใบแจ้งหนี้', category: 'sales', customerLabel: 'ข้อมูลลูกค้า' },
+        receipt: { prefix: 'REC', name: 'ใบเสร็จรับเงิน', category: 'sales', customerLabel: 'ข้อมูลลูกค้า' },
+        tax_invoice: { prefix: 'TAX', name: 'ใบกำกับภาษี', category: 'sales', customerLabel: 'ข้อมูลลูกค้า', alwaysVat: true },
+        receipt_tax: { prefix: 'TR', name: 'ใบเสร็จรับเงิน/ใบกำกับภาษี', category: 'sales', customerLabel: 'ข้อมูลลูกค้า', optionalVat: true },
+        purchase_order: { prefix: 'PO', name: 'ใบสั่งซื้อ', category: 'purchase', customerLabel: 'ข้อมูลผู้ขาย' },
+        goods_receipt: { prefix: 'GR', name: 'ใบรับสินค้า', category: 'purchase', customerLabel: 'ข้อมูลผู้ขาย', addToStock: true },
+        billing: { prefix: 'BL', name: 'ใบวางบิล', category: 'purchase', customerLabel: 'ข้อมูลผู้ขาย' },
+        credit_note: { prefix: 'CN', name: 'ใบลดหนี้', category: 'accounting', customerLabel: 'ข้อมูลลูกค้า' },
+        debit_note: { prefix: 'DN', name: 'ใบเพิ่มหนี้', category: 'accounting', customerLabel: 'ข้อมูลลูกค้า' },
+        withholding_tax: { prefix: 'WHT', name: 'หนังสือรับรองหักภาษี ณ ที่จ่าย', category: 'accounting', customerLabel: 'ข้อมูลผู้ถูกหักภาษี' },
+        inventory_report: { prefix: 'INR', name: 'รายงานสินค้าคงเหลือ', category: 'internal', customerLabel: 'ข้อมูลรายงาน' },
+        salary_report: { prefix: 'SAL', name: 'รายงานเงินเดือน', category: 'internal', customerLabel: 'ข้อมูลรายงาน' },
+        meeting_doc: { prefix: 'MTG', name: 'เอกสารการประชุม', category: 'internal', customerLabel: 'ข้อมูลการประชุม' },
+        company_cert: { prefix: 'CRT', name: 'หนังสือรับรองบริษัท', category: 'company', customerLabel: 'ข้อมูลบริษัท' },
+        shareholders: { prefix: 'SHR', name: 'รายชื่อผู้ถือหุ้น', category: 'company', customerLabel: 'ข้อมูลบริษัท' },
+        memorandum: { prefix: 'MEM', name: 'หนังสือบริคณห์สนธิ', category: 'company', customerLabel: 'ข้อมูลบริษัท' }
+    };
+
+    // Data Handler for SDK
+    const dataHandler = {
+        onDataChanged(data) {
+            allDocuments = data.filter(d => d.type === 'document') || [];
+            allProducts = data.filter(d => d.type === 'product') || [];
+            allServices = data.filter(d => d.type === 'service') || [];
+            updateDashboard();
+            if (currentDocType) {
+                renderDocumentList();
+            }
+        }
+    };
+
+    // Initialize Application
+    async function initApp() {
+        // Check for remembered login
+        const remembered = localStorage.getItem('lykn_remember');
+        if (remembered) {
+            const { username, password } = JSON.parse(remembered);
+            document.getElementById('loginUsername').value = username;
+            document.getElementById('loginPassword').value = password;
+            document.getElementById('rememberMe').checked = true;
+        }
+
+        // Load saved settings
+        loadSettings();
+
+        // Load users from localStorage (or Google Sheets when available)
+        await loadUsersFromStorage();
+
+        // Initialize Element SDK
+        if (window.elementSdk) {
+            window.elementSdk.init({
+                defaultConfig,
+                onConfigChange: async (config) => {
+                    applyTheme(config);
+                },
+                mapToCapabilities: (config) => ({
+                    recolorables: [
+                        {
+                            get: () => config.primary_color || defaultConfig.primary_color,
+                            set: (value) => {
+                                config.primary_color = value;
+                                window.elementSdk.setConfig({ primary_color: value });
+                            }
+                        },
+                        {
+                            get: () => config.secondary_color || defaultConfig.secondary_color,
+                            set: (value) => {
+                                config.secondary_color = value;
+                                window.elementSdk.setConfig({ secondary_color: value });
+                            }
+                        }
+                    ],
+                    borderables: [],
+                    fontEditable: undefined,
+                    fontSizeable: undefined
+                }),
+                mapToEditPanelValues: (config) => new Map([
+                    ['company_name', config.company_name || defaultConfig.company_name],
+                    ['company_address', config.company_address || defaultConfig.company_address],
+                    ['company_tax_id', config.company_tax_id || defaultConfig.company_tax_id]
+                ])
+            });
+        }
+    }
+
+    async function loadUsersFromStorage() {
+        // For now, load from localStorage
+        // In future, can integrate with Google Sheets
+        if (registeredUsers.length === 0) {
+            registeredUsers = [
+                { id: 'admin001', username: 'admin', password: 'admin123', fullName: 'ผู้ดูแลระบบ', role: 'admin', status: 'active', createdAt: new Date().toISOString() },
+                { id: 'admin002', username: '39917@suansri.ac.th', password: 'rmjiny45', fullName: 'ผู้ดูแลระบบ', role: 'admin', status: 'active', createdAt: new Date().toISOString() }
+            ];
+            localStorage.setItem('lykn_users', JSON.stringify(registeredUsers));
+        }
+    }
+
+    // Apply Theme
+    function applyTheme(config) {
+        const primary = config.primary_color || defaultConfig.primary_color;
+        const secondary = config.secondary_color || defaultConfig.secondary_color;
+
+        document.getElementById('topBar').style.background = `linear-gradient(135deg, ${primary}, ${secondary})`;
+        document.getElementById('sidebar').style.background = primary;
+
+        document.querySelectorAll('[style*="background: linear-gradient"]').forEach(el => {
+            if (el.id !== 'topBar' && el.id !== 'loginPage') {
+                el.style.background = `linear-gradient(135deg, ${primary}, ${secondary})`;
+            }
+        });
+
+        document.querySelectorAll('[style*="background: #662D91"]').forEach(el => {
+            el.style.background = primary;
+        });
+
+        document.querySelectorAll('[style*="color: #662D91"]').forEach(el => {
+            el.style.color = primary;
+        });
+    }
+
+    // Login Functions
+    function togglePasswordVisibility() {
+        const input = document.getElementById('loginPassword');
+        const icon = document.getElementById('eyeIcon');
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>';
+        } else {
+            input.type = 'password';
+            icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>';
+        }
+    }
+
+    function handleLogin() {
+        const username = document.getElementById('loginUsername').value.trim();
+        const password = document.getElementById('loginPassword').value;
+        const remember = document.getElementById('rememberMe').checked;
+
+        const user = registeredUsers.find(u => u.username === username && u.password === password && u.status === 'active');
+
+        if (user) {
+            currentUser = user;
+
+            if (remember) {
+                localStorage.setItem('lykn_remember', JSON.stringify({ username, password }));
+            } else {
+                localStorage.removeItem('lykn_remember');
+            }
+
+            document.getElementById('loginPage').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
+            document.getElementById('currentUser').textContent = user.fullName;
+
+            // Show management menus for admin
+            if (user.role === 'admin') {
+                document.getElementById('companyDocsMenu').classList.remove('hidden');
+                document.getElementById('userManagementMenu').classList.remove('hidden');
+            }
+
+            updateDashboard();
+            showToast('เข้าสู่ระบบสำเร็จ');
+        } else {
+            const errorEl = document.getElementById('loginError');
+            errorEl.textContent = 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง หรือบัญชีถูกระงับ';
+            errorEl.classList.remove('hidden');
+        }
+    }
+
+    function handleLogout() {
+        currentUser = null;
+        document.getElementById('mainApp').classList.add('hidden');
+        document.getElementById('loginPage').classList.remove('hidden');
+        document.getElementById('loginPassword').value = '';
+        document.getElementById('loginError').classList.add('hidden');
+        showToast('ออกจากระบบแล้ว');
+    }
+
+    function showForgotPassword() {
+        document.getElementById('forgotPasswordModal').classList.remove('hidden');
+    }
+
+    function closeForgotPassword() {
+        document.getElementById('forgotPasswordModal').classList.add('hidden');
+    }
+
+    // Sidebar Functions
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        sidebar.classList.toggle('hidden');
+    }
+
+    function toggleMenu(menu) {
+        const menuEl = document.getElementById(menu + 'Menu');
+        const arrow = document.getElementById(menu + 'Arrow');
+        menuEl.classList.toggle('hidden');
+        arrow.style.transform = menuEl.classList.contains('hidden') ? '' : 'rotate(180deg)';
+    }
+
+    // Document Functions
+    function selectDocType(type) {
+        currentDocType = type;
+        showDocumentList();
+    }
+
+    function showDocumentList() {
+        document.getElementById('dashboardView').classList.add('hidden');
+        document.getElementById('docFormView').classList.add('hidden');
+        document.getElementById('productsView').classList.add('hidden');
+        document.getElementById('usersView').classList.add('hidden');
+        document.getElementById('docListView').classList.remove('hidden');
+
+        const config = docTypeConfig[currentDocType];
+        document.getElementById('docListTitle').textContent = config.name;
+        document.getElementById('docListSubtitle').textContent = `รายการ${config.name}ทั้งหมด`;
+
+        renderDocumentList();
+    }
+
+    function renderDocumentList() {
+        const tbody = document.getElementById('docTableBody');
+        const docs = allDocuments.filter(d => d.docType === currentDocType);
+
+        if (docs.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-500">ยังไม่มีเอกสาร</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = docs.map(doc => {
+            const statusClass = doc.status === 'paid' ? 'status-paid' : doc.status === 'cancelled' ? 'status-cancelled' : 'status-pending';
+            const statusText = doc.status === 'paid' ? 'จ่ายแล้ว' : doc.status === 'cancelled' ? 'ยกเลิก' : 'ค้างชำระ';
+
+            return `
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="px-6 py-4 font-medium">${doc.docNumber}</td>
+                    <td class="px-6 py-4">${doc.customerName || '-'}</td>
+                    <td class="px-6 py-4">${formatDate(doc.createdAt)}</td>
+                    <td class="px-6 py-4 text-right">${formatNumber(doc.total)} บาท</td>
+                    <td class="px-6 py-4 text-center">
+                        <span class="px-3 py-1 rounded-full text-sm ${statusClass}">${statusText}</span>
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                        <div class="flex items-center justify-center space-x-2">
+                            <button onclick="viewDocument('${doc.__backendId}')" class="p-2 text-blue-500 hover:bg-blue-50 rounded" title="ดูเอกสาร">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                </svg>
+                            </button>
+                            <button onclick="showDeleteConfirm('${doc.__backendId}')" class="p-2 text-red-500 hover:bg-red-50 rounded" title="ลบเอกสาร">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function createNewDocument() {
+        editingDocument = null;
+        currentDocItems = [];
+
+        const config = docTypeConfig[currentDocType];
+        const docNumber = generateDocNumber(currentDocType);
+
+        document.getElementById('docFormTitle').textContent = `สร้าง${config.name}`;
+        document.getElementById('docFormNumber').textContent = docNumber;
+        document.getElementById('customerLabel').textContent = config.customerLabel;
+
+        // Reset form
+        document.getElementById('customerName').value = '';
+        document.getElementById('customerAddress').value = '';
+        document.getElementById('customerTax').value = '';
+        document.getElementById('customerPhone').value = '';
+        document.getElementById('docNumber').value = docNumber;
+        document.getElementById('docDate').value = new Date().toISOString().split('T')[0];
+        document.getElementById('docStatus').value = 'pending';
+        document.getElementById('discountInput').value = '0';
+        document.getElementById('docRemarks').value = '';
+
+        // VAT options
+        if (config.alwaysVat) {
+            document.getElementById('vatOptionSection').classList.add('hidden');
+            document.getElementById('includeVat').checked = true;
+        } else if (config.optionalVat) {
+            document.getElementById('vatOptionSection').classList.remove('hidden');
+            document.getElementById('includeVat').checked = false;
+        } else {
+            document.getElementById('vatOptionSection').classList.add('hidden');
+            document.getElementById('includeVat').checked = false;
+        }
+
+        // Convert document option (only for quotation)
+        if (currentDocType === 'quotation') {
+            document.getElementById('convertDocSection').classList.remove('hidden');
+        } else {
+            document.getElementById('convertDocSection').classList.add('hidden');
+        }
+
+        // Creator info
+        document.getElementById('createdByDisplay').textContent = currentUser.fullName;
+        document.getElementById('createdAtDisplay').textContent = formatDateTime(new Date().toISOString());
+        document.getElementById('updatedAtDisplay').textContent = '-';
+
+        renderItemsTable();
+        calculateTotals();
+
+        // Hide sidebar when creating document
+        document.getElementById('sidebar').classList.add('hidden');
+
+        document.getElementById('docListView').classList.add('hidden');
+        document.getElementById('docFormView').classList.remove('hidden');
+    }
+
+    function viewDocument(id) {
+        const doc = allDocuments.find(d => d.__backendId === id);
+        if (!doc) return;
+
+        editingDocument = doc;
+        currentDocType = doc.docType;
+        currentDocItems = JSON.parse(doc.items || '[]');
+
+        const config = docTypeConfig[currentDocType];
+
+        document.getElementById('docFormTitle').textContent = config.name;
+        document.getElementById('docFormNumber').textContent = doc.docNumber;
+        document.getElementById('customerLabel').textContent = config.customerLabel;
+
+        document.getElementById('customerName').value = doc.customerName || '';
+        document.getElementById('customerAddress').value = doc.customerAddress || '';
+        document.getElementById('customerTax').value = doc.customerTax || '';
+        document.getElementById('customerPhone').value = doc.customerPhone || '';
+        document.getElementById('docNumber').value = doc.docNumber;
+        document.getElementById('docDate').value = doc.createdAt ? doc.createdAt.split('T')[0] : '';
+        document.getElementById('docStatus').value = doc.status || 'pending';
+        document.getElementById('discountInput').value = doc.discount || '0';
+        document.getElementById('docRemarks').value = doc.remarks || '';
+
+        // VAT options
+        if (config.alwaysVat) {
+            document.getElementById('vatOptionSection').classList.add('hidden');
+            document.getElementById('includeVat').checked = true;
+        } else if (config.optionalVat) {
+            document.getElementById('vatOptionSection').classList.remove('hidden');
+            document.getElementById('includeVat').checked = doc.vat > 0;
+        } else {
+            document.getElementById('vatOptionSection').classList.add('hidden');
+            document.getElementById('includeVat').checked = false;
+        }
+
+        // Convert document option
+        if (currentDocType === 'quotation') {
+            document.getElementById('convertDocSection').classList.remove('hidden');
+        } else {
+            document.getElementById('convertDocSection').classList.add('hidden');
+        }
+
+        // Creator info
+        document.getElementById('createdByDisplay').textContent = doc.createdBy || '-';
+        document.getElementById('createdAtDisplay').textContent = formatDateTime(doc.createdAt);
+        document.getElementById('updatedAtDisplay').textContent = formatDateTime(doc.updatedAt);
+
+        renderItemsTable();
+        calculateTotals();
+
+        // Hide sidebar when viewing document
+        document.getElementById('sidebar').classList.add('hidden');
+
+        document.getElementById('docListView').classList.add('hidden');
+        document.getElementById('docFormView').classList.remove('hidden');
+    }
+
+    function backToList() {
+        document.getElementById('docFormView').classList.add('hidden');
+        document.getElementById('docListView').classList.remove('hidden');
+        document.getElementById('sidebar').classList.remove('hidden');
+        document.getElementById('convertDocType').value = '';
+    }
+
+    function backToDashboard() {
+        document.getElementById('docFormView').classList.add('hidden');
+        document.getElementById('docListView').classList.add('hidden');
+        document.getElementById('productsView').classList.add('hidden');
+        document.getElementById('usersView').classList.add('hidden');
+        document.getElementById('dashboardView').classList.remove('hidden');
+        document.getElementById('sidebar').classList.remove('hidden');
+    }
+
+    function generateDocNumber(type) {
+        const config = docTypeConfig[type];
+        const now = new Date();
+        const day = String(now.getDate()).padStart(2, '0');
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const year = now.getFullYear();
+
+        // Count existing docs of this type in current year
+        const yearDocs = allDocuments.filter(d => {
+            if (d.docType !== type) return false;
+            const docYear = d.docNumber ? d.docNumber.slice(-4) : '';
+            return docYear === String(year);
+        });
+
+        const sequence = String(yearDocs.length + 1).padStart(4, '0');
+
+        return `${config.prefix}-${sequence}${day}${month}${year}`;
+    }
+
+    // Items Functions
+    function showAddItemModal() {
+        // Reset manual entry form
+        document.getElementById('itemName').value = '';
+        document.getElementById('itemQty').value = '1';
+        document.getElementById('itemUnit').value = 'ชิ้น';
+        document.getElementById('itemPrice').value = '0';
+        document.getElementById('itemDiscount').value = '0';
+        
+        // Show products tab by default
+        switchAddItemTab('products');
+        document.getElementById('addItemModal').classList.remove('hidden');
+        
+        // Load products and services
+        loadProductsForSelection();
+        loadServicesForSelection();
+    }
+
+    function switchAddItemTab(tab) {
+        // Hide all tabs
+        document.getElementById('productsListTab').classList.add('hidden');
+        document.getElementById('servicesListTab').classList.add('hidden');
+        document.getElementById('manualEntryTab').classList.add('hidden');
+        
+        // Remove active state from all tabs
+        document.getElementById('selectProductsTab').classList.remove('tab-active');
+        document.getElementById('selectServicesTab').classList.remove('tab-active');
+        
+        // Show selected tab
+        if (tab === 'products') {
+            document.getElementById('productsListTab').classList.remove('hidden');
+            document.getElementById('selectProductsTab').classList.add('tab-active');
+        } else if (tab === 'services') {
+            document.getElementById('servicesListTab').classList.remove('hidden');
+            document.getElementById('selectServicesTab').classList.add('tab-active');
+        }
+    }
+
+    function switchAddItemManual() {
+        document.getElementById('productsListTab').classList.add('hidden');
+        document.getElementById('servicesListTab').classList.add('hidden');
+        document.getElementById('manualEntryTab').classList.remove('hidden');
+        
+        document.getElementById('selectProductsTab').classList.remove('tab-active');
+        document.getElementById('selectServicesTab').classList.remove('tab-active');
+    }
+
+    function loadProductsForSelection() {
+        const productsList = document.getElementById('productsList');
+        allProducts = JSON.parse(localStorage.getItem('lykn_products') || '[]');
+        
+        if (allProducts.length === 0) {
+            productsList.innerHTML = '<p class="text-gray-500 text-center py-4">ยังไม่มีสินค้า</p>';
+            return;
+        }
+
+        productsList.innerHTML = allProducts.map(prod => `
+            <button onclick="selectProductForItem('${prod.__backendId}')" class="w-full text-left p-3 rounded-lg border border-gray-200 hover:bg-blue-50 hover:border-blue-300 transition-colors">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="font-medium text-gray-800">${prod.productName}</p>
+                        <p class="text-sm text-gray-500">${prod.productSKU} • ${prod.productStockQty} ${prod.productUnit}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-semibold" style="color: #662D91;">${formatNumber(prod.productSellPrice)} บาท</p>
+                    </div>
+                </div>
+            </button>
+        `).join('');
+    }
+
+    function loadServicesForSelection() {
+        const servicesList = document.getElementById('servicesList');
+        allServices = JSON.parse(localStorage.getItem('lykn_services') || '[]');
+        
+        if (allServices.length === 0) {
+            servicesList.innerHTML = '<p class="text-gray-500 text-center py-4">ยังไม่มีบริการ</p>';
+            return;
+        }
+
+        servicesList.innerHTML = allServices.map(svc => `
+            <button onclick="selectServiceForItem('${svc.__backendId}')" class="w-full text-left p-3 rounded-lg border border-gray-200 hover:bg-green-50 hover:border-green-300 transition-colors">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="font-medium text-gray-800">${svc.serviceName}</p>
+                        <p class="text-sm text-gray-500">${svc.serviceSKU} • ${svc.serviceDuration || 'ไม่ระบุ'}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-semibold" style="color: #662D91;">${formatNumber(svc.servicePrice)} บาท</p>
+                    </div>
+                </div>
+            </button>
+        `).join('');
+    }
+
+    function selectProductForItem(productId) {
+        const product = allProducts.find(p => p.__backendId === productId);
+        if (!product) return;
+
+        currentDocItems.push({
+            id: Date.now(),
+            name: product.productName,
+            qty: 1,
+            unit: product.productUnit,
+            price: product.productSellPrice,
+            discount: 0,
+            total: product.productSellPrice,
+            sku: product.productSKU,
+            stockQty: product.productStockQty
+        });
+
+        renderItemsTable();
+        calculateTotals();
+        closeAddItemModal();
+        showToast(`เพิ่ม${product.productName}แล้ว`);
+    }
+
+    function selectServiceForItem(serviceId) {
+        const service = allServices.find(s => s.__backendId === serviceId);
+        if (!service) return;
+
+        currentDocItems.push({
+            id: Date.now(),
+            name: service.serviceName,
+            qty: 1,
+            unit: 'งาน',
+            price: service.servicePrice,
+            discount: 0,
+            total: service.servicePrice,
+            sku: service.serviceSKU
+        });
+
+        renderItemsTable();
+        calculateTotals();
+        closeAddItemModal();
+        showToast(`เพิ่ม${service.serviceName}แล้ว`);
+    }
+
+    function closeAddItemModal() {
+        document.getElementById('addItemModal').classList.add('hidden');
+    }
+
+    function addItem() {
+        const name = document.getElementById('itemName').value.trim();
+        const qty = parseFloat(document.getElementById('itemQty').value) || 1;
+        const unit = document.getElementById('itemUnit').value.trim() || 'ชิ้น';
+        const price = parseFloat(document.getElementById('itemPrice').value) || 0;
+        const discount = parseFloat(document.getElementById('itemDiscount').value) || 0;
+
+        if (!name) {
+            showToast('กรุณากรอกชื่อสินค้า');
+            return;
+        }
+
+        currentDocItems.push({
+            id: Date.now(),
+            name,
+            qty,
+            unit,
+            price,
+            discount,
+            total: (qty * price) - discount
+        });
+
+        renderItemsTable();
+        calculateTotals();
+        closeAddItemModal();
+        showToast('เพิ่มสินค้าแล้ว');
+    }
+
+    function removeItem(id) {
+        currentDocItems = currentDocItems.filter(item => item.id !== id);
+        renderItemsTable();
+        calculateTotals();
+    }
+
+    function renderItemsTable() {
+        const tbody = document.getElementById('itemsTableBody');
+
+        if (currentDocItems.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-gray-500">ยังไม่มีรายการสินค้า</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = currentDocItems.map((item, index) => `
+            <tr class="border-b">
+                <td class="px-4 py-3 text-center">${index + 1}</td>
+                <td class="px-4 py-3">${item.name}</td>
+                <td class="px-4 py-3 text-center">${item.qty} ${item.unit}</td>
+                <td class="px-4 py-3 text-right">${formatNumber(item.price)}</td>
+                <td class="px-4 py-3 text-right">${formatNumber(item.discount)}</td>
+                <td class="px-4 py-3 text-right font-semibold">${formatNumber(item.total)}</td>
+                <td class="px-4 py-3 text-center">
+                    <button onclick="removeItem(${item.id})" class="p-1 text-red-500 hover:bg-red-50 rounded">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function calculateTotals() {
+        const subtotal = currentDocItems.reduce((sum, item) => sum + item.total, 0);
+        const discount = parseFloat(document.getElementById('discountInput').value) || 0;
+        const includeVat = document.getElementById('includeVat').checked;
+        const config = docTypeConfig[currentDocType];
+
+        let vat = 0;
+        let total = subtotal - discount;
+
+        if (includeVat || config?.alwaysVat) {
+            vat = total * 0.07;
+            total = total + vat;
+            document.getElementById('vatRow').classList.remove('hidden');
+        } else {
+            document.getElementById('vatRow').classList.add('hidden');
+        }
+
+        document.getElementById('subtotalDisplay').textContent = formatNumber(subtotal) + ' บาท';
+        document.getElementById('vatDisplay').textContent = formatNumber(vat) + ' บาท';
+        document.getElementById('totalDisplay').textContent = formatNumber(total) + ' บาท';
+    }
+
+    async function saveDocument() {
+        const btn = document.getElementById('saveDocBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
+
+        const subtotal = currentDocItems.reduce((sum, item) => sum + item.total, 0);
+        const discount = parseFloat(document.getElementById('discountInput').value) || 0;
+        const includeVat = document.getElementById('includeVat').checked;
+        const config = docTypeConfig[currentDocType];
+
+        let vat = 0;
+        let total = subtotal - discount;
+
+        if (includeVat || config?.alwaysVat) {
+            vat = total * 0.07;
+            total = total + vat;
+        }
+
+        const docData = {
+            type: 'document',
+            docType: currentDocType,
+            docNumber: document.getElementById('docNumber').value,
+            customerName: document.getElementById('customerName').value,
+            customerAddress: document.getElementById('customerAddress').value,
+            customerTax: document.getElementById('customerTax').value,
+            customerPhone: document.getElementById('customerPhone').value,
+            items: JSON.stringify(currentDocItems),
+            subtotal,
+            discount,
+            vat,
+            total,
+            status: document.getElementById('docStatus').value,
+            remarks: document.getElementById('docRemarks').value,
+            createdBy: currentUser.fullName,
+            createdAt: editingDocument ? editingDocument.createdAt : new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+
+        try {
+            // Save to localStorage
+            let documents = JSON.parse(localStorage.getItem('lykn_documents') || '[]');
+            
+            if (editingDocument) {
+                const index = documents.findIndex(d => d.__backendId === editingDocument.__backendId);
+                if (index !== -1) {
+                    documents[index] = { ...docData, __backendId: editingDocument.__backendId };
+                }
+            } else {
+                docData.__backendId = 'doc_' + Date.now();
+                documents.push(docData);
+            }
+
+            localStorage.setItem('lykn_documents', JSON.stringify(documents));
+
+            // Send to Google Sheets
+            const gsData = {
+                'เลขที่เอกสาร': docData.docNumber,
+                'ประเภทเอกสาร': config?.name || 'เอกสาร',
+                'ชื่อลูกค้า': docData.customerName,
+                'ที่อยู่': docData.customerAddress,
+                'เลขประจำตัว': docData.customerTax,
+                'วันที่ออกเอกสาร': formatDate(docData.createdAt),
+                'เวลาออกเอกสาร': formatDateTime(docData.createdAt),
+                'รายการสินค้า': currentDocItems.map(i => `${i.name} (${i.qty}${i.unit})`).join(' | '),
+                'ยอดรวม': docData.subtotal,
+                'ส่วนลด': docData.discount,
+                'ภาษี': docData.vat,
+                'ราคารวม': docData.total,
+                'สถานะ': docData.status === 'paid' ? 'จ่ายแล้ว' : docData.status === 'cancelled' ? 'ยกเลิก' : 'ค้างชำระ',
+                'เพิ่มโดย': docData.createdBy,
+                'หมายเหตุ': docData.remarks,
+                'วันที่สร้าง': new Date().toLocaleString('th-TH')
+            };
+
+            await sendToGoogleSheets('เอกสาร', gsData);
+
+            // Update local data
+            allDocuments = documents;
+            showToast('บันทึกเอกสารสำเร็จ');
+            backToList();
+        } catch (error) {
+            showToast('เกิดข้อผิดพลาดในการบันทึก');
+            console.error(error);
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg><span>บันทึก</span>';
+    }
+
+    function handleConvertDoc() {
+        const newType = document.getElementById('convertDocType').value;
+        if (!newType) return;
+
+        const config = docTypeConfig[newType];
+        const newDocNumber = generateDocNumber(newType);
+
+        currentDocType = newType;
+        document.getElementById('docFormTitle').textContent = `สร้าง${config.name}`;
+        document.getElementById('docFormNumber').textContent = newDocNumber;
+        document.getElementById('docNumber').value = newDocNumber;
+        document.getElementById('customerLabel').textContent = config.customerLabel;
+
+        // VAT options for new type
+        if (config.alwaysVat) {
+            document.getElementById('vatOptionSection').classList.add('hidden');
+            document.getElementById('includeVat').checked = true;
+        } else if (config.optionalVat) {
+            document.getElementById('vatOptionSection').classList.remove('hidden');
+        } else {
+            document.getElementById('vatOptionSection').classList.add('hidden');
+            document.getElementById('includeVat').checked = false;
+        }
+
+        document.getElementById('convertDocSection').classList.add('hidden');
+        editingDocument = null; // Create new document
+
+        calculateTotals();
+        showToast(`เปลี่ยนเป็น${config.name}แล้ว`);
+    }
+
+    // Products Functions
+    function showProductsPage() {
+        document.getElementById('dashboardView').classList.add('hidden');
+        document.getElementById('docListView').classList.add('hidden');
+        document.getElementById('docFormView').classList.add('hidden');
+        document.getElementById('usersView').classList.add('hidden');
+        document.getElementById('productsView').classList.remove('hidden');
+        document.getElementById('sidebar').classList.add('hidden');
+        
+        // Load products from localStorage
+        allProducts = JSON.parse(localStorage.getItem('lykn_products') || '[]');
+        renderProductsTable();
+    }
+
+    function renderProductsTable() {
+        const tbody = document.getElementById('productsTableBody');
+        const products = allProducts;
+
+        if (products.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-500">ยังไม่มีสินค้า</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = products.map(prod => {
+            const stockClass = prod.productStockQty <= prod.productMinStock ? 'stock-level-low' : 'stock-level-ok';
+            return `
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="px-6 py-4 font-medium">${prod.productSKU}</td>
+                    <td class="px-6 py-4">${prod.productName}</td>
+                    <td class="px-6 py-4">${prod.productCategory}</td>
+                    <td class="px-6 py-4 text-center ${stockClass}">${prod.productStockQty} ${prod.productUnit}</td>
+                    <td class="px-6 py-4 text-right">${formatNumber(prod.productSellPrice)} บาท</td>
+                    <td class="px-6 py-4 text-center">
+                        <div class="flex items-center justify-center space-x-2">
+                            <button onclick="editProduct('${prod.__backendId}')" class="p-2 text-blue-500 hover:bg-blue-50 rounded" title="แก้ไข">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                </svg>
+                            </button>
+                            <button onclick="deleteProduct('${prod.__backendId}')" class="p-2 text-red-500 hover:bg-red-50 rounded" title="ลบ">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function showAddProductModal() {
+        document.getElementById('prodSKU').value = '';
+        document.getElementById('prodName').value = '';
+        document.getElementById('prodCategory').value = '';
+        document.getElementById('prodUnit').value = 'ชิ้น';
+        document.getElementById('prodStock').value = '0';
+        document.getElementById('prodCost').value = '0';
+        document.getElementById('prodSell').value = '0';
+        document.getElementById('prodMinStock').value = '10';
+        document.getElementById('prodWarehouse').value = '';
+        document.getElementById('addProductModal').classList.remove('hidden');
+    }
+
+    function closeAddProductModal() {
+        document.getElementById('addProductModal').classList.add('hidden');
+    }
+
+    async function addProduct() {
+        const prodData = {
+            type: 'product',
+            productSKU: document.getElementById('prodSKU').value.trim(),
+            productName: document.getElementById('prodName').value.trim(),
+            productCategory: document.getElementById('prodCategory').value.trim(),
+            productUnit: document.getElementById('prodUnit').value.trim(),
+            productStockQty: parseFloat(document.getElementById('prodStock').value) || 0,
+            productCostPrice: parseFloat(document.getElementById('prodCost').value) || 0,
+            productSellPrice: parseFloat(document.getElementById('prodSell').value) || 0,
+            productMinStock: parseFloat(document.getElementById('prodMinStock').value) || 10,
+            productWarehouse: document.getElementById('prodWarehouse').value.trim(),
+            createdAt: new Date().toISOString()
+        };
+
+        if (!prodData.productName) {
+            showToast('กรุณากรอกชื่อสินค้า');
+            return;
+        }
+
+        try {
+            // Save to localStorage first
+            const products = JSON.parse(localStorage.getItem('lykn_products') || '[]');
+            prodData.__backendId = 'prod_' + Date.now();
+            products.push(prodData);
+            localStorage.setItem('lykn_products', JSON.stringify(products));
+
+            // Send to Google Sheets
+            const gsResult = await sendToGoogleSheets('สินค้า', {
+                'รหัสสินค้า': prodData.productSKU,
+                'ชื่อสินค้า': prodData.productName,
+                'ประเภทสินค้า': prodData.productCategory,
+                'หน่วยสินค้า': prodData.productUnit,
+                'ราคาซื้อ': prodData.productCostPrice,
+                'ราคาขาย': prodData.productSellPrice,
+                'จำนวนคงเหลือ': prodData.productStockQty,
+                'สถานที่จัดเก็บ': prodData.productWarehouse,
+                'ค่าขั้นต่ำที่เตือน': prodData.productMinStock,
+                'วันที่เพิ่ม': formatDateTime(prodData.createdAt)
+            });
+
+            // Update local data
+            allProducts = products;
+            showToast('เพิ่มสินค้าแล้ว');
+            closeAddProductModal();
+            renderProductsTable();
+        } catch (error) {
+            showToast('เกิดข้อผิดพลาด');
+            console.error(error);
+        }
+    }
+
+    async function deleteProduct(id) {
+        const product = allProducts.find(p => p.__backendId === id);
+        if (product) {
+            allProducts = allProducts.filter(p => p.__backendId !== id);
+            localStorage.setItem('lykn_products', JSON.stringify(allProducts));
+            showToast('ลบสินค้าแล้ว');
+            renderProductsTable();
+        }
+    }
+
+    function showStockPage() {
+        document.getElementById('dashboardView').classList.add('hidden');
+        document.getElementById('docListView').classList.add('hidden');
+        document.getElementById('docFormView').classList.add('hidden');
+        document.getElementById('usersView').classList.add('hidden');
+        document.getElementById('productsView').classList.add('hidden');
+        document.getElementById('stockView').classList.remove('hidden');
+        document.getElementById('sidebar').classList.add('hidden');
+        
+        // Load products from localStorage
+        allProducts = JSON.parse(localStorage.getItem('lykn_products') || '[]');
+        renderStockReport();
+    }
+
+    function renderStockReport() {
+        const tbody = document.getElementById('stockTableBody');
+        const products = allProducts.sort((a, b) => a.productStockQty - b.productStockQty);
+
+        // Count stock levels
+        let okCount = 0, lowCount = 0, outCount = 0;
+        products.forEach(prod => {
+            if (prod.productStockQty <= 0) outCount++;
+            else if (prod.productStockQty <= prod.productMinStock) lowCount++;
+            else okCount++;
+        });
+
+        document.getElementById('stockOkCount').textContent = okCount;
+        document.getElementById('stockLowCount').textContent = lowCount;
+        document.getElementById('stockOutCount').textContent = outCount;
+
+        if (products.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-gray-500">ยังไม่มีสินค้า</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = products.map(prod => {
+            let stockStatus = 'เพียงพอ';
+            let statusClass = 'bg-green-100 text-green-700';
+            
+            if (prod.productStockQty <= 0) {
+                stockStatus = 'หมดสต็อก';
+                statusClass = 'bg-red-100 text-red-700';
+            } else if (prod.productStockQty <= prod.productMinStock) {
+                stockStatus = 'ใกล้หมด';
+                statusClass = 'bg-yellow-100 text-yellow-700';
+            }
+
+            const totalValue = prod.productStockQty * prod.productCostPrice;
+
+            return `
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="px-6 py-4 font-medium">${prod.productSKU}</td>
+                    <td class="px-6 py-4">${prod.productName}</td>
+                    <td class="px-6 py-4">${prod.productCategory}</td>
+                    <td class="px-6 py-4 text-center">${prod.productStockQty} ${prod.productUnit}</td>
+                    <td class="px-6 py-4 text-center">${prod.productMinStock} ${prod.productUnit}</td>
+                    <td class="px-6 py-4">
+                        <span class="px-3 py-1 rounded-full text-sm ${statusClass}">${stockStatus}</span>
+                    </td>
+                    <td class="px-6 py-4 text-right">${formatNumber(totalValue)} บาท</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function showServicesPage() {
+        document.getElementById('dashboardView').classList.add('hidden');
+        document.getElementById('docListView').classList.add('hidden');
+        document.getElementById('docFormView').classList.add('hidden');
+        document.getElementById('usersView').classList.add('hidden');
+        document.getElementById('productsView').classList.add('hidden');
+        document.getElementById('servicesView').classList.remove('hidden');
+        document.getElementById('sidebar').classList.add('hidden');
+        
+        // Load services from localStorage
+        allServices = JSON.parse(localStorage.getItem('lykn_services') || '[]');
+        renderServicesTable();
+    }
+
+    function renderServicesTable() {
+        const tbody = document.getElementById('servicesTableBody');
+        const services = allServices;
+
+        if (services.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-500">ยังไม่มีบริการ</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = services.map(svc => `
+            <tr class="border-b hover:bg-gray-50">
+                <td class="px-6 py-4 font-medium">${svc.serviceSKU}</td>
+                <td class="px-6 py-4">${svc.serviceName}</td>
+                <td class="px-6 py-4">${svc.serviceDescription || '-'}</td>
+                <td class="px-6 py-4 text-center">${svc.serviceDuration || '-'}</td>
+                <td class="px-6 py-4 text-right">${formatNumber(svc.servicePrice)} บาท</td>
+                <td class="px-6 py-4 text-center">
+                    <div class="flex items-center justify-center space-x-2">
+                        <button onclick="editService('${svc.__backendId}')" class="p-2 text-blue-500 hover:bg-blue-50 rounded" title="แก้ไข">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                            </svg>
+                        </button>
+                        <button onclick="deleteService('${svc.__backendId}')" class="p-2 text-red-500 hover:bg-red-50 rounded" title="ลบ">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function showAddServiceModal() {
+        document.getElementById('serviceSKU').value = '';
+        document.getElementById('serviceName').value = '';
+        document.getElementById('serviceDescription').value = '';
+        document.getElementById('serviceDuration').value = '';
+        document.getElementById('servicePrice').value = '0';
+        document.getElementById('addServiceModal').classList.remove('hidden');
+    }
+
+    function closeAddServiceModal() {
+        document.getElementById('addServiceModal').classList.add('hidden');
+    }
+
+    async function addService() {
+        const svcData = {
+            type: 'service',
+            serviceSKU: document.getElementById('serviceSKU').value.trim(),
+            serviceName: document.getElementById('serviceName').value.trim(),
+            serviceDescription: document.getElementById('serviceDescription').value.trim(),
+            serviceDuration: document.getElementById('serviceDuration').value.trim(),
+            servicePrice: parseFloat(document.getElementById('servicePrice').value) || 0,
+            createdAt: new Date().toISOString()
+        };
+
+        if (!svcData.serviceName) {
+            showToast('กรุณากรอกชื่อบริการ');
+            return;
+        }
+
+        try {
+            // Save to localStorage first
+            const services = JSON.parse(localStorage.getItem('lykn_services') || '[]');
+            svcData.__backendId = 'svc_' + Date.now();
+            services.push(svcData);
+            localStorage.setItem('lykn_services', JSON.stringify(services));
+
+            // Send to Google Sheets
+            await sendToGoogleSheets('บริการ', {
+                'รหัสการบริการ': svcData.serviceSKU,
+                'ชื่อบริการ': svcData.serviceName,
+                'รายละเอียดงาน': svcData.serviceDescription,
+                'ระยะเวลาให้บริการ': svcData.serviceDuration,
+                'ราคาบริการ': svcData.servicePrice,
+                'วันที่เพิ่ม': formatDateTime(svcData.createdAt)
+            });
+
+            // Update local data
+            allServices = services;
+            showToast('เพิ่มบริการแล้ว');
+            closeAddServiceModal();
+            renderServicesTable();
+        } catch (error) {
+            showToast('เกิดข้อผิดพลาด');
+            console.error(error);
+        }
+    }
+
+    async function deleteService(id) {
+        const service = allServices.find(s => s.__backendId === id);
+        if (service) {
+            allServices = allServices.filter(s => s.__backendId !== id);
+            localStorage.setItem('lykn_services', JSON.stringify(allServices));
+            showToast('ลบบริการแล้ว');
+            renderServicesTable();
+        }
+    }
+
+    // Users Functions
+    function showUsersPage() {
+        document.getElementById('dashboardView').classList.add('hidden');
+        document.getElementById('docListView').classList.add('hidden');
+        document.getElementById('productsView').classList.add('hidden');
+        document.getElementById('usersView').classList.remove('hidden');
+        document.getElementById('sidebar').classList.add('hidden');
+        renderUsersTable();
+    }
+
+    function renderUsersTable() {
+        const tbody = document.getElementById('usersTableBody');
+
+        if (registeredUsers.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-500">ยังไม่มีผู้ใช้</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = registeredUsers.map(user => {
+            const statusClass = user.status === 'active' ? 'status-active' : 'status-suspended';
+            const statusText = user.status === 'active' ? 'ใช้งาน' : 'ระงับ';
+
+            return `
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="px-6 py-4 font-medium">${user.fullName}</td>
+                    <td class="px-6 py-4">${user.role === 'admin' ? 'ผู้ดูแลระบบ' : user.role === 'accounting' ? 'ฝ่ายบัญชี' : user.role === 'procurement' ? 'ฝ่ายจัดซื้อ' : 'พนักงาน'}</td>
+                    <td class="px-6 py-4 text-center">
+                        <span class="px-3 py-1 rounded-full text-sm ${statusClass}">${statusText}</span>
+                    </td>
+                    <td class="px-6 py-4">${formatDate(user.createdAt)}</td>
+                    <td class="px-6 py-4 text-center">
+                        <div class="flex items-center justify-center space-x-2">
+                            ${user.role !== 'admin' ? `
+                            <button onclick="suspendUser('${user.id}')" class="p-2 text-orange-500 hover:bg-orange-50 rounded" title="${user.status === 'active' ? 'ระงับ' : 'เปิดใช้งาน'}">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </button>
+                            ` : ''}
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function showAddUserModal() {
+        document.getElementById('newUsername').value = '';
+        document.getElementById('newPassword').value = '';
+        document.getElementById('newFullName').value = '';
+        document.getElementById('newUserRole').value = 'staff';
+        document.getElementById('addUserModal').classList.remove('hidden');
+    }
+
+    function closeAddUserModal() {
+        document.getElementById('addUserModal').classList.add('hidden');
+    }
+
+    function addUser() {
+        const username = document.getElementById('newUsername').value.trim();
+        const password = document.getElementById('newPassword').value.trim();
+        const fullName = document.getElementById('newFullName').value.trim();
+        const role = document.getElementById('newUserRole').value;
+
+        if (!username || !password || !fullName) {
+            showToast('กรุณากรอกข้อมูลให้ครบถ้วน');
+            return;
+        }
+
+        if (registeredUsers.find(u => u.username === username)) {
+            showToast('ชื่อผู้ใช้นี้มีอยู่แล้ว');
+            return;
+        }
+
+        const newUser = {
+            id: 'user' + Date.now(),
+            username,
+            password,
+            fullName,
+            role,
+            status: 'active',
+            createdAt: new Date().toISOString()
+        };
+
+        registeredUsers.push(newUser);
+        localStorage.setItem('lykn_users', JSON.stringify(registeredUsers));
+
+        // Send to Google Sheets
+        sendToGoogleSheets('ผู้ใช้', {
+            'รหัสผู้ใช้': newUser.id,
+            'ชื่อ-นามสกุล': fullName,
+            'อีเมล': username,
+            'บทบาท': role === 'admin' ? 'ผู้ดูแลระบบ' : role === 'accounting' ? 'ฝ่ายบัญชี' : role === 'procurement' ? 'ฝ่ายจัดซื้อ' : 'พนักงาน',
+            'วันที่สร้าง': new Date().toLocaleString('th-TH')
+        });
+
+        showToast('สร้างบัญชีผู้ใช้สำเร็จ');
+        closeAddUserModal();
+        renderUsersTable();
+    }
+
+    function suspendUser(userId) {
+        const user = registeredUsers.find(u => u.id === userId);
+        if (user) {
+            user.status = user.status === 'active' ? 'suspended' : 'active';
+            user.suspendedAt = user.status === 'suspended' ? new Date().toISOString() : null;
+
+            // If suspended more than 30 days, delete
+            if (user.status === 'suspended') {
+                const thirtyDaysLater = new Date(user.suspendedAt);
+                thirtyDaysLater.setDate(thirtyDaysLater.getDate() + 30);
+                if (new Date() > thirtyDaysLater) {
+                    registeredUsers = registeredUsers.filter(u => u.id !== userId);
+                }
+            }
+
+            localStorage.setItem('lykn_users', JSON.stringify(registeredUsers));
+            renderUsersTable();
+            showToast(user.status === 'active' ? 'เปิดใช้งานบัญชีแล้ว' : 'ระงับบัญชีแล้ว');
+        }
+    }
+
+    // Delete Functions
+    function showDeleteConfirm(id) {
+        deleteDocId = id;
+        document.getElementById('deleteConfirmModal').classList.remove('hidden');
+    }
+
+    function closeDeleteConfirm() {
+        deleteDocId = null;
+        document.getElementById('deleteConfirmModal').classList.add('hidden');
+    }
+
+    async function confirmDelete() {
+        if (!deleteDocId) return;
+
+        const doc = allDocuments.find(d => d.__backendId === deleteDocId);
+        if (doc && window.dataSdk) {
+            const result = await window.dataSdk.delete(doc);
+            if (result.isOk) {
+                showToast('ลบเอกสารแล้ว');
+            } else {
+                showToast('เกิดข้อผิดพลาดในการลบ');
+            }
+        }
+
+        closeDeleteConfirm();
+    }
+
+    // Dashboard Functions
+    function updateDashboard() {
+        // Load documents from localStorage
+        allDocuments = JSON.parse(localStorage.getItem('lykn_documents') || '[]');
+        allProducts = JSON.parse(localStorage.getItem('lykn_products') || '[]');
+        allServices = JSON.parse(localStorage.getItem('lykn_services') || '[]');
+        
+        const docs = allDocuments.filter(d => d.type === 'document');
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+
+        document.getElementById('totalDocs').textContent = docs.length;
+        document.getElementById('paidDocs').textContent = docs.filter(d => d.status === 'paid').length;
+        document.getElementById('pendingDocs').textContent = docs.filter(d => d.status === 'pending').length;
+
+        const monthDocs = docs.filter(d => {
+            if (!d.createdAt) return false;
+            const docDate = new Date(d.createdAt);
+            return docDate.getMonth() === currentMonth && docDate.getFullYear() === currentYear;
+        });
+        document.getElementById('monthDocs').textContent = monthDocs.length;
+
+        // Recent documents
+        const recentContainer = document.getElementById('recentDocs');
+        const recent = docs.slice(-5).reverse();
+
+        if (recent.length === 0) {
+            recentContainer.innerHTML = '<p class="text-gray-500 text-center py-8">ยังไม่มีเอกสาร</p>';
+        } else {
+            recentContainer.innerHTML = recent.map(doc => {
+                const config = docTypeConfig[doc.docType];
+                const statusClass = doc.status === 'paid' ? 'status-paid' : doc.status === 'cancelled' ? 'status-cancelled' : 'status-pending';
+                const statusText = doc.status === 'paid' ? 'จ่ายแล้ว' : doc.status === 'cancelled' ? 'ยกเลิก' : 'ค้างชำระ';
+
+                return `
+                    <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer" onclick="viewDocFromDashboard('${doc.__backendId}', '${doc.docType}')">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background: rgba(102,45,145,0.1);">
+                                <svg class="w-5 h-5" fill="#662D91" viewBox="0 0 24 24">
+                                    <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="font-medium text-gray-800">${doc.docNumber}</p>
+                                <p class="text-sm text-gray-500">${config?.name || 'เอกสาร'} - ${doc.customerName || 'ไม่ระบุ'}</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="font-semibold" style="color: #662D91;">${formatNumber(doc.total)} บาท</p>
+                            <span class="px-2 py-1 rounded-full text-xs ${statusClass}">${statusText}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+    }
+
+    function viewDocFromDashboard(id, type) {
+        currentDocType = type;
+        viewDocument(id);
+    }
+
+    // Print Function
+    function printDocument() {
+        window.print();
+    }
+
+    // Settings Functions
+    function showSettings() {
+        const settings = JSON.parse(localStorage.getItem('lykn_settings') || '{}');
+        document.getElementById('primaryColor').value = settings.primaryColor || '#662D91';
+        document.getElementById('secondaryColor').value = settings.secondaryColor || '#7BA4DB';
+        document.getElementById('settingCompanyName').value = settings.companyName || '';
+        document.getElementById('settingCompanyAddress').value = settings.companyAddress || '';
+        document.getElementById('settingCompanyTax').value = settings.companyTax || '';
+        document.getElementById('settingsModal').classList.remove('hidden');
+    }
+
+    function closeSettings() {
+        document.getElementById('settingsModal').classList.add('hidden');
+    }
+
+    function saveSettings() {
+        const settings = {
+            primaryColor: document.getElementById('primaryColor').value,
+            secondaryColor: document.getElementById('secondaryColor').value,
+            companyName: document.getElementById('settingCompanyName').value,
+            companyAddress: document.getElementById('settingCompanyAddress').value,
+            companyTax: document.getElementById('settingCompanyTax').value
+        };
+
+        localStorage.setItem('lykn_settings', JSON.stringify(settings));
+
+        // Apply theme
+        if (window.elementSdk) {
+            window.elementSdk.setConfig({
+                primary_color: settings.primaryColor,
+                secondary_color: settings.secondaryColor,
+                company_name: settings.companyName,
+                company_address: settings.companyAddress,
+                company_tax_id: settings.companyTax
+            });
+        }
+
+        applyTheme({
+            primary_color: settings.primaryColor,
+            secondary_color: settings.secondaryColor
+        });
+
+        closeSettings();
+        showToast('บันทึกการตั้งค่าแล้ว');
+    }
+
+    function loadSettings() {
+        const settings = JSON.parse(localStorage.getItem('lykn_settings') || '{}');
+        if (settings.primaryColor || settings.secondaryColor) {
+            applyTheme({
+                primary_color: settings.primaryColor || '#662D91',
+                secondary_color: settings.secondaryColor || '#7BA4DB'
+            });
+        }
+    }
+
+    function resetTheme() {
+        document.getElementById('primaryColor').value = '#662D91';
+        document.getElementById('secondaryColor').value = '#7BA4DB';
+        showToast('รีเซ็ตธีมแล้ว');
+    }
+
+    // Utility Functions
+    function formatNumber(num) {
+        return (num || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function formatDate(dateStr) {
+        if (!dateStr) return '-';
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+
+    function formatDateTime(dateStr) {
+        if (!dateStr) return '-';
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+
+    function showToast(message) {
+        const toast = document.getElementById('toast');
+        document.getElementById('toastMessage').textContent = message;
+        toast.classList.remove('hidden');
+        setTimeout(() => {
+            toast.classList.add('hidden');
+        }, 3000);
+    }
+
+    // Initialize
+    initApp();
+  </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9d425f9377ec4ba0',t:'MTc3MjEzOTY0MS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
